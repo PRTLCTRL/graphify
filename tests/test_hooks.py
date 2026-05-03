@@ -142,3 +142,54 @@ def test_hook_check_no_additionalContext(tmp_path):
     assert result.returncode == 0
     assert result.stdout == ""
     assert result.stderr == ""
+
+
+def test_install_with_wiki_flag(tmp_path):
+    """Test that --with-wiki flag creates hooks with wiki rebuild enabled."""
+    repo = _make_git_repo(tmp_path)
+    result = install(repo, with_wiki=True)
+    hook = repo / ".git" / "hooks" / "post-commit"
+    content = hook.read_text()
+    assert _HOOK_MARKER in content
+    assert "with_wiki=True" in content
+    assert "--with-wiki" in content
+    assert "installed" in result
+
+
+def test_install_without_wiki_flag(tmp_path):
+    """Test that default install does not enable wiki rebuild."""
+    repo = _make_git_repo(tmp_path)
+    result = install(repo, with_wiki=False)
+    hook = repo / ".git" / "hooks" / "post-commit"
+    content = hook.read_text()
+    assert _HOOK_MARKER in content
+    assert "with_wiki=True" not in content
+    assert "installed" in result
+
+
+def test_post_checkout_with_wiki_flag(tmp_path):
+    """Test that post-checkout hook respects --with-wiki flag."""
+    repo = _make_git_repo(tmp_path)
+    install(repo, with_wiki=True)
+    hook = repo / ".git" / "hooks" / "post-checkout"
+    content = hook.read_text()
+    assert _CHECKOUT_MARKER in content
+    assert "with_wiki=True" in content
+    assert "--with-wiki" in content
+
+
+def test_cli_hook_install_with_wiki(tmp_path):
+    """Test CLI accepts --with-wiki flag."""
+    import sys
+    repo = _make_git_repo(tmp_path)
+    result = subprocess.run(
+        [sys.executable, "-m", "graphify", "hook", "install", "--with-wiki"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    hook = repo / ".git" / "hooks" / "post-commit"
+    assert hook.exists()
+    content = hook.read_text()
+    assert "with_wiki=True" in content

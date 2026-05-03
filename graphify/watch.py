@@ -36,12 +36,15 @@ def _relativize_source_files(payload: dict, root: Path) -> None:
                 continue
 
 
-def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: bool = False) -> bool:
+def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: bool = False, with_wiki: bool = False) -> bool:
     """Re-run AST extraction + build + cluster + report for code files. No LLM needed.
 
     When ``force`` is True the node-count safety check in ``to_json`` is bypassed
     so the rebuilt graph overwrites graph.json even if it has fewer nodes.
     Use this after refactors that legitimately delete code.
+    
+    When ``with_wiki`` is True, also rebuild the wiki from the updated graph.
+    Adds ~1-2 seconds for a 1000-node graph.
 
     Returns True on success, False on error.
     """
@@ -138,6 +141,22 @@ def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: boo
             if stale.exists():
                 stale.unlink()
 
+        # Rebuild wiki if requested (no LLM cost, ~1-2 seconds for 1000-node graph)
+        wiki_written = False
+        if with_wiki:
+            try:
+                from graphify.wiki import to_wiki
+                wiki_count = to_wiki(
+                    G, communities, out / "wiki",
+                    community_labels=labels,
+                    cohesion=cohesion,
+                    god_nodes_data=gods
+                )
+                wiki_written = True
+                print(f"[graphify watch] Wiki rebuilt: {wiki_count} articles in {out / 'wiki'}")
+            except Exception as wiki_err:
+                print(f"[graphify watch] Wiki rebuild failed: {wiki_err}")
+
         # clear stale needs_update flag if present
         flag = out / "needs_update"
         if flag.exists():
@@ -146,6 +165,8 @@ def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: boo
         print(f"[graphify watch] Rebuilt: {G.number_of_nodes()} nodes, "
               f"{G.number_of_edges()} edges, {len(communities)} communities")
         products = "graph.json" + (", graph.html" if html_written else "") + " and GRAPH_REPORT.md"
+        if wiki_written:
+            products += " + wiki"
         print(f"[graphify watch] {products} updated in {out}")
         return True
 
