@@ -42,10 +42,13 @@ if [ -z "$GRAPHIFY_PYTHON" ]; then
 fi
 """
 
-_HOOK_SCRIPT = """\
+def _hook_script(with_wiki: bool = False) -> str:
+    """Generate the post-commit hook script with optional wiki rebuild."""
+    wiki_flag = ", with_wiki=True" if with_wiki else ""
+    return """\
 # graphify-hook-start
 # Auto-rebuilds the knowledge graph after each commit (code files only, no LLM needed).
-# Installed by: graphify hook install
+# Installed by: graphify hook install""" + (" --with-wiki" if with_wiki else "") + """
 
 # Skip during rebase/merge/cherry-pick to avoid blocking --continue with unstaged changes
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
@@ -83,7 +86,7 @@ try:
     import os as _os
     from graphify.watch import _rebuild_code
     _force = _os.environ.get('GRAPHIFY_FORCE', '').lower() in ('1', 'true', 'yes')
-    _rebuild_code(Path('.'), force=_force)
+    _rebuild_code(Path('.')""" + wiki_flag + """, force=_force)
 except Exception as exc:
     print(f'[graphify hook] Rebuild failed: {exc}')
     sys.exit(1)
@@ -93,10 +96,13 @@ disown 2>/dev/null || true
 """
 
 
-_CHECKOUT_SCRIPT = """\
+def _checkout_script(with_wiki: bool = False) -> str:
+    """Generate the post-checkout hook script with optional wiki rebuild."""
+    wiki_flag = ", with_wiki=True" if with_wiki else ""
+    return """\
 # graphify-checkout-hook-start
 # Auto-rebuilds the knowledge graph (code only) when switching branches.
-# Installed by: graphify hook install
+# Installed by: graphify hook install""" + (" --with-wiki" if with_wiki else "") + """
 
 PREV_HEAD=$1
 NEW_HEAD=$2
@@ -129,7 +135,7 @@ from pathlib import Path
 import os, sys
 try:
     _force = os.environ.get('GRAPHIFY_FORCE', '').lower() in ('1', 'true', 'yes')
-    _rebuild_code(Path('.'), force=_force)
+    _rebuild_code(Path('.')""" + wiki_flag + """, force=_force)
 except Exception as exc:
     print(f'[graphify] Rebuild failed: {exc}')
     sys.exit(1)
@@ -205,16 +211,24 @@ def _uninstall_hook(hooks_dir: Path, name: str, marker: str, marker_end: str) ->
     return f"graphify removed from {name} at {hook_path} (other hook content preserved)"
 
 
-def install(path: Path = Path(".")) -> str:
-    """Install graphify post-commit and post-checkout hooks in the nearest git repo."""
+def install(path: Path = Path("."), with_wiki: bool = False) -> str:
+    """Install graphify post-commit and post-checkout hooks in the nearest git repo.
+    
+    Args:
+        path: Path to search for git repository
+        with_wiki: If True, hooks will rebuild the wiki after each commit (adds ~1-2s)
+    """
     root = _git_root(path)
     if root is None:
         raise RuntimeError(f"No git repository found at or above {path.resolve()}")
 
     hooks_dir = _hooks_dir(root)
 
-    commit_msg = _install_hook(hooks_dir, "post-commit", _HOOK_SCRIPT, _HOOK_MARKER)
-    checkout_msg = _install_hook(hooks_dir, "post-checkout", _CHECKOUT_SCRIPT, _CHECKOUT_MARKER)
+    hook_script = _hook_script(with_wiki=with_wiki)
+    checkout_script = _checkout_script(with_wiki=with_wiki)
+
+    commit_msg = _install_hook(hooks_dir, "post-commit", hook_script, _HOOK_MARKER)
+    checkout_msg = _install_hook(hooks_dir, "post-checkout", checkout_script, _CHECKOUT_MARKER)
 
     return f"post-commit: {commit_msg}\npost-checkout: {checkout_msg}"
 
