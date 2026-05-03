@@ -319,3 +319,176 @@ def test_gemini_uninstall_removes_hook(tmp_path):
 def test_gemini_uninstall_noop_if_not_installed(tmp_path):
     from graphify.__main__ import gemini_uninstall
     gemini_uninstall(tmp_path)  # should not raise
+
+
+# ── Codex hooks ───────────────────────────────────────────────────────────────
+
+def test_codex_install_writes_hooks_json(tmp_path):
+    """codex install writes .codex/hooks.json with graphify hook-check command."""
+    from graphify.__main__ import _install_codex_hook
+    import json as _json
+    _install_codex_hook(tmp_path)
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    assert hooks_path.exists()
+    hooks = _json.loads(hooks_path.read_text())
+    pre_tool_hooks = hooks["hooks"]["PreToolUse"]
+    assert len(pre_tool_hooks) > 0
+    assert pre_tool_hooks[0]["matcher"] == "Bash"
+    command = pre_tool_hooks[0]["hooks"][0]["command"]
+    assert "graphify" in command
+    assert "hook-check" in command
+
+
+def test_codex_install_uses_absolute_path(tmp_path):
+    """codex install resolves absolute path to graphify executable (Windows fix)."""
+    from graphify.__main__ import _install_codex_hook
+    import json as _json
+    _install_codex_hook(tmp_path)
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    hooks = _json.loads(hooks_path.read_text())
+    command = hooks["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    # Should contain full path or at minimum "graphify hook-check"
+    # On Windows, may be "C:\\...\\graphify.exe hook-check"
+    # On Unix, may be "/usr/local/bin/graphify hook-check"
+    assert "hook-check" in command
+
+
+def test_codex_install_is_cross_platform(tmp_path):
+    """codex install does not use bash-specific syntax like [ -f ] or &&."""
+    from graphify.__main__ import _install_codex_hook
+    import json as _json
+    _install_codex_hook(tmp_path)
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    hooks = _json.loads(hooks_path.read_text())
+    command = hooks["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    # Bash-specific operators should NOT be present
+    assert "[ -f" not in command
+    assert "&&" not in command
+    assert "||" not in command
+    # Should use graphify hook-check instead
+    assert "hook-check" in command
+
+
+def test_codex_install_merges_existing_hooks(tmp_path):
+    """codex install preserves existing PreToolUse hooks."""
+    from graphify.__main__ import _install_codex_hook
+    import json as _json
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    hooks_path.parent.mkdir(parents=True, exist_ok=True)
+    existing_hooks = {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "Bash",
+                    "hooks": [{"type": "command", "command": "echo 'user hook'"}]
+                }
+            ]
+        }
+    }
+    hooks_path.write_text(_json.dumps(existing_hooks))
+    _install_codex_hook(tmp_path)
+    hooks = _json.loads(hooks_path.read_text())
+    pre_tool_hooks = hooks["hooks"]["PreToolUse"]
+    # Should have both user hook and graphify hook
+    commands = [h["hooks"][0]["command"] for h in pre_tool_hooks]
+    assert any("echo 'user hook'" in cmd for cmd in commands)
+    assert any("hook-check" in cmd for cmd in commands)
+
+
+def test_codex_install_replaces_old_graphify_hooks(tmp_path):
+    """codex install removes old bash-style graphify hooks before adding new one."""
+    from graphify.__main__ import _install_codex_hook
+    import json as _json
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    hooks_path.parent.mkdir(parents=True, exist_ok=True)
+    # Old v0.4.25 style hook with bash syntax
+    old_hooks = {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "Bash",
+                    "hooks": [{
+                        "type": "command",
+                        "command": "[ -f graphify-out/graph.json ] && echo '{...}' || true"
+                    }]
+                }
+            ]
+        }
+    }
+    hooks_path.write_text(_json.dumps(old_hooks))
+    _install_codex_hook(tmp_path)
+    hooks = _json.loads(hooks_path.read_text())
+    pre_tool_hooks = hooks["hooks"]["PreToolUse"]
+    # Old bash hook should be removed
+    for hook in pre_tool_hooks:
+        for h in hook["hooks"]:
+            assert "[ -f" not in h["command"]
+            assert "||" not in h["command"]
+    # New hook should be present
+    assert any("hook-check" in hook["hooks"][0]["command"] for hook in pre_tool_hooks)
+
+
+def test_codex_install_idempotent(tmp_path):
+    """codex install can be run multiple times without duplicating hooks."""
+    from graphify.__main__ import _install_codex_hook
+    import json as _json
+    _install_codex_hook(tmp_path)
+    _install_codex_hook(tmp_path)
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    hooks = _json.loads(hooks_path.read_text())
+    pre_tool_hooks = hooks["hooks"]["PreToolUse"]
+    # Should only have one graphify hook
+    graphify_hooks = [h for h in pre_tool_hooks 
+                      if any("graphify" in hook["command"] 
+                            for hook in h.get("hooks", []))]
+    assert len(graphify_hooks) == 1
+
+
+def test_codex_uninstall_removes_hook(tmp_path):
+    """codex uninstall removes graphify hook from .codex/hooks.json."""
+    from graphify.__main__ import _install_codex_hook, _uninstall_codex_hook
+    import json as _json
+    _install_codex_hook(tmp_path)
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    assert hooks_path.exists()
+    _uninstall_codex_hook(tmp_path)
+    if hooks_path.exists():
+        hooks = _json.loads(hooks_path.read_text())
+        pre_tool_hooks = hooks.get("hooks", {}).get("PreToolUse", [])
+        # No graphify hooks should remain
+        for hook in pre_tool_hooks:
+            for h in hook.get("hooks", []):
+                assert "graphify" not in h.get("command", "")
+
+
+def test_codex_uninstall_preserves_user_hooks(tmp_path):
+    """codex uninstall keeps non-graphify hooks intact."""
+    from graphify.__main__ import _install_codex_hook, _uninstall_codex_hook
+    import json as _json
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    hooks_path.parent.mkdir(parents=True, exist_ok=True)
+    user_hooks = {
+        "hooks": {
+            "PreToolUse": [
+                {
+                    "matcher": "Bash",
+                    "hooks": [{"type": "command", "command": "echo 'user hook'"}]
+                }
+            ]
+        }
+    }
+    hooks_path.write_text(_json.dumps(user_hooks))
+    _install_codex_hook(tmp_path)
+    _uninstall_codex_hook(tmp_path)
+    hooks = _json.loads(hooks_path.read_text())
+    pre_tool_hooks = hooks["hooks"]["PreToolUse"]
+    # User hook should still be there
+    assert any("echo 'user hook'" in h["hooks"][0]["command"] for h in pre_tool_hooks)
+    # But graphify hook should be gone
+    assert not any("graphify" in str(h) for h in pre_tool_hooks)
+
+
+def test_codex_uninstall_noop_if_not_installed(tmp_path):
+    """codex uninstall does nothing if hooks.json doesn't exist."""
+    from graphify.__main__ import _uninstall_codex_hook
+    _uninstall_codex_hook(tmp_path)  # should not raise
