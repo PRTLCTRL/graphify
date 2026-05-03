@@ -255,3 +255,17 @@ def test_detect_video_not_in_words(tmp_path):
     result = detect(tmp_path)
     # Only video file present — total_words should be 0
     assert result["total_words"] == 0
+
+
+def test_classify_gdscript():
+    """GDScript (.gd) files should classify as CODE."""
+    assert classify_file(Path("player.gd")) == FileType.CODE
+    assert classify_file(Path("enemy.gd")) == FileType.CODE
+
+
+def test_detect_finds_gdscript_files(tmp_path):
+    """detect() correctly finds GDScript files."""
+    (tmp_path / "player.gd").write_text("extends Node\nfunc _ready():\n\tpass\n")
+    result = detect(tmp_path)
+    assert len(result["files"]["code"]) >= 1
+    assert any("player.gd" in f for f in result["files"]["code"])
