@@ -601,11 +601,19 @@ To configure in Claude Desktop, add to `claude_desktop_config.json`:
   "mcpServers": {
     "graphify": {
       "command": "python3",
-      "args": ["-m", "graphify.serve", "/absolute/path/to/graphify-out/graph.json"]
+      "args": ["-m", "graphify.serve", "$PROJECT_ROOT/graphify-out/graph.json"]
     }
   }
 }
 ```
+
+The path supports:
+- Environment variables: `$VAR` or `${VAR}` (e.g., `$HOME/project/graphify-out/graph.json`)
+- Tilde expansion: `~/project/graphify-out/graph.json`
+- Relative paths: `./graphify-out/graph.json` (relative to MCP server's working directory)
+- Absolute paths: `/absolute/path/to/graphify-out/graph.json`
+
+For multi-repo workflows, set an environment variable to your current project root and use it in the MCP config.
 
 ### Step 8 - Token reduction benchmark (only if total_words > 5000)
 

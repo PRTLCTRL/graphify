@@ -1,6 +1,7 @@
 # MCP stdio server - exposes graph query tools to Claude and other agents
 from __future__ import annotations
 import json
+import os
 import sys
 from pathlib import Path
 import networkx as nx
@@ -8,9 +9,25 @@ from networkx.readwrite import json_graph
 from graphify.security import sanitize_label
 
 
+def _expand_path(graph_path: str) -> Path:
+    """Expand environment variables and resolve path relative to cwd.
+    
+    Supports:
+    - Environment variables: $VAR or ${VAR}
+    - Tilde expansion: ~/path
+    - Relative paths: ./path (relative to current working directory)
+    - Absolute paths: /path
+    
+    Returns the expanded Path object.
+    """
+    expanded = os.path.expandvars(graph_path)
+    expanded = os.path.expanduser(expanded)
+    return Path(expanded)
+
+
 def _load_graph(graph_path: str) -> nx.Graph:
     try:
-        resolved = Path(graph_path).resolve()
+        resolved = _expand_path(graph_path).resolve()
         if resolved.suffix != ".json":
             raise ValueError(f"Graph path must be a .json file, got: {graph_path!r}")
         if not resolved.exists():

@@ -210,6 +210,18 @@ python -m graphify.serve graphify-out/graph.json
 
 The MCP server gives your assistant structured access: `query_graph`, `get_node`, `get_neighbors`, `shortest_path`.
 
+The MCP server path supports environment variables for multi-repo workflows:
+```bash
+# Use environment variables
+python -m graphify.serve $PROJECT_ROOT/graphify-out/graph.json
+
+# Or tilde expansion
+python -m graphify.serve ~/my-project/graphify-out/graph.json
+
+# Or relative paths (relative to working directory)
+python -m graphify.serve ./graphify-out/graph.json
+```
+
 > **WSL / Linux note:** Ubuntu ships `python3`, not `python`. Use a venv to avoid conflicts:
 > ```bash
 > python3 -m venv .venv && .venv/bin/pip install "graphifyy[mcp]"

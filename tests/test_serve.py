@@ -1,5 +1,6 @@
 """Tests for serve.py - MCP graph query helpers (no mcp package required)."""
 import json
+import os
 import pytest
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -15,6 +16,7 @@ from graphify.serve import (
     _resolve_context_filters,
     _subgraph_to_text,
     _load_graph,
+    _expand_path,
 )
 
 
@@ -196,3 +198,54 @@ def test_load_graph_missing_file(tmp_path):
     graphify_dir.mkdir()
     with pytest.raises(SystemExit):
         _load_graph(str(graphify_dir / "nonexistent.json"))
+
+
+# --- _expand_path ---
+
+def test_expand_path_absolute():
+    path = "/absolute/path/to/graph.json"
+    expanded = _expand_path(path)
+    assert str(expanded) == path
+
+def test_expand_path_relative():
+    path = "graphify-out/graph.json"
+    expanded = _expand_path(path)
+    assert expanded.name == "graph.json"
+    assert str(expanded) == "graphify-out/graph.json"
+
+def test_expand_path_tilde(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    path = "~/graphify-out/graph.json"
+    expanded = _expand_path(path)
+    assert str(expanded).startswith(str(tmp_path))
+    assert "~" not in str(expanded)
+
+def test_expand_path_env_var(tmp_path, monkeypatch):
+    monkeypatch.setenv("PROJECT_DIR", str(tmp_path))
+    path = "$PROJECT_DIR/graphify-out/graph.json"
+    expanded = _expand_path(path)
+    assert str(expanded).startswith(str(tmp_path))
+    assert "$PROJECT_DIR" not in str(expanded)
+
+def test_expand_path_env_var_braces(tmp_path, monkeypatch):
+    monkeypatch.setenv("PROJECT_DIR", str(tmp_path))
+    path = "${PROJECT_DIR}/graphify-out/graph.json"
+    expanded = _expand_path(path)
+    assert str(expanded).startswith(str(tmp_path))
+    assert "PROJECT_DIR" not in str(expanded)
+
+def test_expand_path_current_dir():
+    path = "./graphify-out/graph.json"
+    expanded = _expand_path(path)
+    assert str(expanded) == "graphify-out/graph.json"
+
+def test_load_graph_with_env_var(tmp_path, monkeypatch):
+    monkeypatch.setenv("TEST_DIR", str(tmp_path))
+    G = _make_graph()
+    data = json_graph.node_link_data(G, edges="links")
+    p = tmp_path / "graph.json"
+    p.write_text(json.dumps(data))
+    
+    G2 = _load_graph("$TEST_DIR/graph.json")
+    assert G2.number_of_nodes() == G.number_of_nodes()
+    assert G2.number_of_edges() == G.number_of_edges()
