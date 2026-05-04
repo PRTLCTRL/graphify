@@ -1050,8 +1050,28 @@ def main() -> None:
         for skill_dst in {Path.home() / cfg["skill_dst"] for cfg in _PLATFORM_CONFIG.values()}:
             _check_skill_version(skill_dst)
 
+    # Parse global --out flag and set GRAPHIFY_OUT env var before any commands run
+    # This allows all downstream code (watch.py, hooks, etc.) to use the custom dir
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--out" and i + 1 < len(args):
+            os.environ["GRAPHIFY_OUT"] = args[i + 1]
+            # Remove --out and its value from argv so command parsers don't choke
+            sys.argv.pop(sys.argv.index(args[i]))
+            sys.argv.pop(sys.argv.index(args[i + 1]))
+            break
+        elif args[i].startswith("--out="):
+            os.environ["GRAPHIFY_OUT"] = args[i].split("=", 1)[1]
+            sys.argv.remove(args[i])
+            break
+        i += 1
+
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--out <dir>] <command>")
+        print()
+        print("Global Options:")
+        print("  --out <dir>             output directory (default: graphify-out, or $GRAPHIFY_OUT env var)")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
