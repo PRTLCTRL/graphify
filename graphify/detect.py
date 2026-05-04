@@ -16,7 +16,10 @@ class FileType(str, Enum):
     VIDEO = "video"
 
 
-_MANIFEST_PATH = "graphify-out/manifest.json"
+def _get_manifest_path() -> str:
+    """Get manifest path respecting GRAPHIFY_OUT env var."""
+    graphify_out = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+    return f"{graphify_out}/manifest.json"
 
 CODE_EXTENSIONS = {'.py', '.ts', '.js', '.jsx', '.tsx', '.mjs', '.ejs', '.go', '.rs', '.java', '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.rb', '.swift', '.kt', '.kts', '.cs', '.scala', '.php', '.lua', '.toc', '.zig', '.ps1', '.ex', '.exs', '.m', '.mm', '.jl', '.vue', '.svelte', '.dart', '.v', '.sv', '.sql', '.r'}
 DOC_EXTENSIONS = {'.md', '.mdx', '.txt', '.rst', '.html', '.yaml', '.yml'}
@@ -749,16 +752,20 @@ def _md5_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def load_manifest(manifest_path: str = _MANIFEST_PATH) -> dict:
+def load_manifest(manifest_path: str | None = None) -> dict:
     """Load the manifest from a previous run. Returns {} on any error."""
+    if manifest_path is None:
+        manifest_path = _get_manifest_path()
     try:
         return json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     except Exception:
         return {}
 
 
-def save_manifest(files: dict[str, list[str]], manifest_path: str = _MANIFEST_PATH) -> None:
+def save_manifest(files: dict[str, list[str]], manifest_path: str | None = None) -> None:
     """Save current file mtimes + content hashes for change detection on --update."""
+    if manifest_path is None:
+        manifest_path = _get_manifest_path()
     manifest: dict[str, dict] = {}
     for file_list in files.values():
         for f in file_list:
@@ -771,7 +778,7 @@ def save_manifest(files: dict[str, list[str]], manifest_path: str = _MANIFEST_PA
     Path(manifest_path).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
 
-def detect_incremental(root: Path, manifest_path: str = _MANIFEST_PATH) -> dict:
+def detect_incremental(root: Path, manifest_path: str | None = None) -> dict:
     """Like detect(), but returns only new or modified files since the last run.
 
     Fast path: mtime unchanged → unchanged (free, no hash).
@@ -780,6 +787,8 @@ def detect_incremental(root: Path, manifest_path: str = _MANIFEST_PATH) -> dict:
 
     Backwards compatible with legacy manifests storing plain float mtime values.
     """
+    if manifest_path is None:
+        manifest_path = _get_manifest_path()
     full = detect(root)
     manifest = load_manifest(manifest_path)
 
