@@ -319,3 +319,81 @@ def test_gemini_uninstall_removes_hook(tmp_path):
 def test_gemini_uninstall_noop_if_not_installed(tmp_path):
     from graphify.__main__ import gemini_uninstall
     gemini_uninstall(tmp_path)  # should not raise
+
+
+# ── Codex hook tests (issue #522) ────────────────────────────────────────────
+
+def test_codex_install_writes_hook_json(tmp_path):
+    """codex install writes .codex/hooks.json with PreToolUse hook."""
+    import json as _json
+    _agents_install(tmp_path, "codex")
+    hooks_file = tmp_path / ".codex" / "hooks.json"
+    assert hooks_file.exists()
+    hooks = _json.loads(hooks_file.read_text())
+    assert "hooks" in hooks
+    assert "PreToolUse" in hooks["hooks"]
+    assert len(hooks["hooks"]["PreToolUse"]) > 0
+
+
+def test_codex_hook_uses_shell_agnostic_command(tmp_path):
+    """codex hook command must be shell-agnostic (no bash syntax like [ -f ] or &&)."""
+    import json as _json
+    _agents_install(tmp_path, "codex")
+    hooks_file = tmp_path / ".codex" / "hooks.json"
+    hooks = _json.loads(hooks_file.read_text())
+    pre_tool_hooks = hooks["hooks"]["PreToolUse"]
+    
+    # Find the graphify hook
+    graphify_hook = None
+    for matcher_entry in pre_tool_hooks:
+        for hook in matcher_entry.get("hooks", []):
+            if "graphify" in hook.get("command", ""):
+                graphify_hook = hook
+                break
+    
+    assert graphify_hook is not None, "graphify hook not found"
+    command = graphify_hook["command"]
+    
+    # Verify no bash-only syntax
+    assert "[" not in command, "Command contains bash [ syntax"
+    assert "&&" not in command, "Command contains bash && operator"
+    assert "||" not in command, "Command contains bash || operator"
+    assert "python3 -c" not in command, "Command uses python3 -c inline script"
+    
+    # Verify it uses graphify hook-check
+    assert "graphify" in command
+    assert "hook-check" in command
+
+
+def test_codex_hook_idempotent(tmp_path):
+    """Installing codex hook twice does not duplicate entries."""
+    import json as _json
+    _agents_install(tmp_path, "codex")
+    _agents_install(tmp_path, "codex")
+    hooks_file = tmp_path / ".codex" / "hooks.json"
+    hooks = _json.loads(hooks_file.read_text())
+    pre_tool_hooks = hooks["hooks"]["PreToolUse"]
+    
+    # Count graphify entries
+    graphify_count = 0
+    for matcher_entry in pre_tool_hooks:
+        for hook in matcher_entry.get("hooks", []):
+            if "graphify" in hook.get("command", ""):
+                graphify_count += 1
+    
+    assert graphify_count == 1, f"Expected 1 graphify hook, found {graphify_count}"
+
+
+def test_codex_uninstall_removes_hook(tmp_path):
+    """codex uninstall removes the hook from hooks.json."""
+    import json as _json
+    _agents_install(tmp_path, "codex")
+    _agents_uninstall(tmp_path, platform="codex")
+    
+    hooks_file = tmp_path / ".codex" / "hooks.json"
+    if hooks_file.exists():
+        hooks = _json.loads(hooks_file.read_text())
+        pre_tool_hooks = hooks.get("hooks", {}).get("PreToolUse", [])
+        for matcher_entry in pre_tool_hooks:
+            for hook in matcher_entry.get("hooks", []):
+                assert "graphify" not in hook.get("command", ""), "graphify hook still present after uninstall"
