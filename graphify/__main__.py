@@ -889,6 +889,8 @@ def _agents_uninstall(project_dir: Path, platform: str = "") -> None:
 
     if platform == "opencode":
         _uninstall_opencode_plugin(project_dir or Path("."))
+    elif platform == "codex":
+        _uninstall_codex_hook(project_dir or Path("."))
 
 
 def claude_install(project_dir: Path | None = None) -> None:
