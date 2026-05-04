@@ -178,6 +178,26 @@ dist/
 
 ---
 
+## Custom output directory
+
+By default, graphify writes to `graphify-out/` in the current directory. You can customize this:
+
+**Option 1: CLI argument (recommended)**
+```bash
+graphify --out-dir docs/knowledge-graph .
+graphify --out-dir /shared/graphs query "your question"
+```
+
+**Option 2: Environment variable**
+```bash
+export GRAPHIFY_OUT=my-graphs
+graphify .
+```
+
+The CLI argument takes precedence over the environment variable. Accepts both relative paths (created in current directory) and absolute paths.
+
+---
+
 ## Team setup
 
 `graphify-out/` is meant to be committed to git so everyone on the team starts with a map.
