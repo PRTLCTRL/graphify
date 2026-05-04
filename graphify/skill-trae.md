@@ -77,16 +77,19 @@ If the import succeeds, print nothing and move straight to Step 2.
 
 **In every subsequent bash block, replace `python3` with `$(cat .graphify_python)` to use the correct interpreter.**
 
-### Step 2 - Detect files
+### Step 2 - Detect files and save manifest
 
 ```bash
 $(cat .graphify_python) -c "
 import json
-from graphify.detect import detect
+from graphify.detect import detect, save_manifest
 from pathlib import Path
 result = detect(Path('INPUT_PATH'))
+Path('.graphify_detect.json').write_text(json.dumps(result))
+# Save manifest immediately after detect to ensure it's in sync with the filesystem
+save_manifest(result['files'])
 print(json.dumps(result))
-" > .graphify_detect.json
+"
 ```
 
 Replace INPUT_PATH with the actual path the user provided. Do NOT cat or print the JSON - read it silently and present a clean summary instead:
@@ -664,7 +667,7 @@ Print the output directly in chat. If `total_words <= 5000`, skip silently - the
 
 ---
 
-### Step 9 - Save manifest, update cost tracker, clean up, and report
+### Step 9 - Update manifest, update cost tracker, clean up, and report
 
 ```bash
 $(cat .graphify_python) -c "
@@ -673,6 +676,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from graphify.detect import save_manifest
 
+# Update manifest one final time (redundant with Step 2, but ensures consistency)
 detect = json.loads(Path('.graphify_detect.json').read_text())
 save_manifest(detect['files'])
 
