@@ -156,6 +156,28 @@ graphify hook install              # auto-rebuild on git commit
 graphify merge-graphs a.json b.json              # combine two graphs
 ```
 
+## Custom output directory
+
+By default, graphify writes all output to `graphify-out/`. To use a different directory:
+
+```bash
+# Set environment variable before running
+export GRAPHIFY_OUT=docs/knowledge-graph
+/graphify .
+
+# Or inline with the command
+GRAPHIFY_OUT=.graphify /graphify .
+```
+
+The output directory can be either:
+- A relative path (e.g., `docs/graph`) — resolved from current directory
+- An absolute path (e.g., `/shared/team-graph`)
+
+This is useful for:
+- Integrating with existing documentation structures
+- Shared output directories in git worktrees
+- Multiple graphs for different project sections
+
 See the [full command reference](#full-command-reference) below.
 
 ---
