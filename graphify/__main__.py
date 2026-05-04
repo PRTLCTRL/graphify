@@ -14,9 +14,15 @@ try:
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
-# Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
-_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+
+def _get_output_dir() -> str:
+    """Get the output directory name from env var or default.
+    
+    Called dynamically so changes to GRAPHIFY_OUT env var are respected.
+    Accepts a relative name ("graphify-out-feature") or an
+    absolute path ("/shared/graphify-out").
+    """
+    return os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
 
 def _check_skill_version(skill_dst: Path) -> None:
@@ -1051,7 +1057,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--out <dir>]")
+        print()
+        print("Global options:")
+        print("  --out <dir>             output directory for graph files (default: graphify-out)")
+        print("                          can also be set via GRAPHIFY_OUT env var")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
@@ -1131,6 +1141,19 @@ def main() -> None:
         print("  pi uninstall            remove skill from ~/.pi/agent/skills/graphify/")
         print()
         return
+
+    # Parse global --out flag before processing commands
+    if "--out" in sys.argv:
+        try:
+            out_idx = sys.argv.index("--out")
+            if out_idx + 1 < len(sys.argv):
+                custom_out = sys.argv[out_idx + 1]
+                os.environ["GRAPHIFY_OUT"] = custom_out
+                # Remove the --out and its value from argv so command parsing doesn't see it
+                sys.argv.pop(out_idx)
+                sys.argv.pop(out_idx)
+        except (IndexError, ValueError):
+            pass
 
     cmd = sys.argv[1]
     if cmd == "install":
@@ -1553,7 +1576,7 @@ def main() -> None:
             watch_path = Path(argv[2])
         else:
             # Try to recover the scan root saved by the last full build
-            saved = Path(_GRAPHIFY_OUT) / ".graphify_root"
+            saved = Path(_get_output_dir()) / ".graphify_root"
             if saved.exists():
                 watch_path = Path(saved.read_text(encoding="utf-8").strip())
             else:
@@ -1592,7 +1615,7 @@ def main() -> None:
         # showing top-K outbound edges per symbol.
         from typing import Optional as _Opt
         from graphify.tree_html import write_tree_html, DEFAULT_MAX_CHILDREN
-        graph_path = Path(_GRAPHIFY_OUT) / "graph.json"
+        graph_path = Path(_get_output_dir()) / "graph.json"
         output_path: "_Opt[Path]" = None
         root: "_Opt[str]" = None
         max_children = DEFAULT_MAX_CHILDREN
@@ -1644,7 +1667,7 @@ def main() -> None:
         # graphify merge-graphs graph1.json graph2.json ... --out merged.json
         args = sys.argv[2:]
         graph_paths: list[Path] = []
-        out_path = Path(_GRAPHIFY_OUT) / "merged-graph.json"
+        out_path = Path(_get_output_dir()) / "merged-graph.json"
         i = 0
         while i < len(args):
             if args[i] == "--out" and i + 1 < len(args):

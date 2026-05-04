@@ -7,10 +7,15 @@ import os
 import tempfile
 from pathlib import Path
 
-# Output directory name — override with GRAPHIFY_OUT env var for worktrees or
-# shared-output setups. Accepts a relative name ("graphify-out-feature") or an
-# absolute path ("/shared/graphify-out").
-_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+
+def _get_output_dir() -> str:
+    """Get the output directory name from env var or default.
+    
+    Called dynamically so changes to GRAPHIFY_OUT env var are respected.
+    Accepts a relative name ("graphify-out-feature") or an
+    absolute path ("/shared/graphify-out").
+    """
+    return os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
 
 def _body_content(content: bytes) -> bytes:
@@ -67,7 +72,7 @@ def cache_dir(root: Path = Path("."), kind: str = "ast") -> Path:
     kind is "ast" or "semantic". Separate subdirectories prevent semantic cache
     entries from overwriting AST cache entries for the same source_file (#582).
     """
-    _out = Path(_GRAPHIFY_OUT)
+    _out = Path(_get_output_dir())
     base = _out if _out.is_absolute() else Path(root).resolve() / _out
     d = base / "cache" / kind
     d.mkdir(parents=True, exist_ok=True)
@@ -96,7 +101,7 @@ def load_cached(path: Path, root: Path = Path("."), kind: str = "ast") -> dict |
             return None
     # Migration fallback: check legacy flat cache/ dir for AST entries
     if kind == "ast":
-        legacy = Path(root).resolve() / _GRAPHIFY_OUT / "cache" / f"{h}.json"
+        legacy = Path(root).resolve() / _get_output_dir() / "cache" / f"{h}.json"
         if legacy.exists():
             try:
                 return json.loads(legacy.read_text(encoding="utf-8"))
@@ -147,7 +152,7 @@ def save_cached(path: Path, result: dict, root: Path = Path("."), kind: str = "a
 
 def cached_files(root: Path = Path(".")) -> set[str]:
     """Return set of file hashes that have a valid cache entry (any kind)."""
-    base = Path(root).resolve() / _GRAPHIFY_OUT / "cache"
+    base = Path(root).resolve() / _get_output_dir() / "cache"
     hashes: set[str] = set()
     # Legacy flat entries
     if base.is_dir():
@@ -162,7 +167,7 @@ def cached_files(root: Path = Path(".")) -> set[str]:
 
 def clear_cache(root: Path = Path(".")) -> None:
     """Delete all cache entries (ast/, semantic/, and legacy flat entries)."""
-    base = Path(root).resolve() / _GRAPHIFY_OUT / "cache"
+    base = Path(root).resolve() / _get_output_dir() / "cache"
     # Legacy flat entries
     if base.is_dir():
         for f in base.glob("*.json"):
