@@ -41,16 +41,18 @@ python -m pip install graphifyy -q
 
 Then re-run the Step 1 command.
 
-### Step 2 - Detect files
+### Step 2 - Detect files and save manifest
 
 ```python
 python -c "
 import json, sys
-from graphify.detect import detect
+from graphify.detect import detect, save_manifest
 from pathlib import Path
 
 result = detect(Path('INPUT_PATH'))
 Path('graphify-out/.graphify_detect.json').write_text(json.dumps(result, indent=2))
+# Save manifest immediately after detect to ensure it's in sync with the filesystem
+save_manifest(result['files'])
 total = result.get('total_files', 0)
 words = result.get('total_words', 0)
 print(f'Corpus: {total} files, ~{words} words')
