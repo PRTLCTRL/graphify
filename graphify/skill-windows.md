@@ -822,9 +822,9 @@ if deleted:
     to_remove = [n for n, d in G_existing.nodes(data=True) if d.get('source_file') in deleted]
     G_existing.remove_nodes_from(to_remove)
     if to_remove:
-        print(f'Pruned {len(to_remove)} ghost node(s) from {len(deleted)} deleted file(s) — drift detected and corrected.')
+        print(f'Pruned {len(to_remove)} ghost node(s) from {len(deleted)} deleted file(s).')
     else:
-        print(f'{len(deleted)} file(s) deleted since last run, but no ghost nodes were present in the graph — no drift.')
+        print(f'Manifest listed {len(deleted)} file deletion(s); none were present in the graph — no drift.')
 
 # Merge: new nodes/edges into existing graph
 G_existing.update(G_new)
