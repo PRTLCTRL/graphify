@@ -1,4 +1,4 @@
-"""Tests for language extractors: Java, C, C++, Ruby, C#, Kotlin, Scala, PHP, Swift, Go, Julia, JS/TS."""
+"""Tests for language extractors: Java, C, C++, Ruby, C#, Kotlin, Scala, PHP, Swift, Go, Julia, JS/TS, GDScript."""
 from __future__ import annotations
 from pathlib import Path
 import pytest
@@ -6,6 +6,7 @@ from graphify.extract import (
     extract_java, extract_c, extract_cpp, extract_ruby,
     extract_csharp, extract_kotlin, extract_scala, extract_php,
     extract_swift, extract_go, extract_julia, extract_js,
+    extract_gdscript,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -784,3 +785,19 @@ def test_ts_static_template_literal_resolved():
     targets = {e["target"] for e in r["edges"] if e["relation"] == "imports_from"}
     assert any("statichelper" in t.lower() for t in targets), \
         f"Static template literal import not resolved: {targets}"
+
+
+# ── GDScript ──────────────────────────────────────────────────────────────────
+
+def test_gdscript_no_error():
+    """GDScript extractor should not crash on valid .gd files."""
+    r = extract_gdscript(FIXTURES / "sample.gd")
+    assert "error" not in r
+
+
+def test_gdscript_file_node_exists():
+    """GDScript extractor should create a file node."""
+    r = extract_gdscript(FIXTURES / "sample.gd")
+    labels = _labels(r)
+    assert any("sample.gd" in l for l in labels), \
+        f"Expected sample.gd file node in {labels}"

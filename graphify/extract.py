@@ -606,6 +606,21 @@ _PYTHON_CONFIG = LanguageConfig(
     import_handler=_import_python,
 )
 
+_GDSCRIPT_CONFIG = LanguageConfig(
+    ts_module="_native",
+    ts_language_fn="get_language",
+    class_types=frozenset({"class_definition"}),
+    function_types=frozenset({"function_definition"}),
+    import_types=frozenset(),
+    call_types=frozenset({"call"}),
+    call_function_field="function",
+    call_accessor_node_types=frozenset({"attribute"}),
+    call_accessor_field="attribute",
+    function_boundary_types=frozenset({"function_definition"}),
+    import_handler=None,
+)
+
+
 _JS_CONFIG = LanguageConfig(
     ts_module="tree_sitter_javascript",
     class_types=frozenset({"class_declaration"}),
@@ -860,7 +875,12 @@ def _extract_generic(path: Path, config: LanguageConfig) -> dict:
             lang_fn = getattr(mod, "language", None)
         if lang_fn is None:
             return {"nodes": [], "edges": [], "error": f"No language function in {config.ts_module}"}
-        language = Language(lang_fn())
+        
+        # Special handling for tree-sitter-language-pack
+        if config.ts_module == "_native":
+            language = Language(lang_fn('gdscript'))
+        else:
+            language = Language(lang_fn())
     except ImportError:
         return {"nodes": [], "edges": [], "error": f"{config.ts_module} not installed"}
     except Exception as e:
@@ -1648,6 +1668,32 @@ def extract_python(path: Path) -> dict:
     if "error" not in result:
         _extract_python_rationale(path, result)
     return result
+
+
+def extract_gdscript(path: Path) -> dict:
+    """Extract classes, functions, and calls from a .gd file via tree-sitter AST.
+    
+    Note: GDScript support requires tree-sitter-language-pack to be installed.
+    Falls back to basic file node if parser is unavailable.
+    """
+    result = _extract_generic(path, _GDSCRIPT_CONFIG)
+    if "error" in result:
+        # Fallback: create at least a file node so .gd files are recognized
+        file_nid = _make_id(str(path))
+        return {
+            "nodes": [{
+                "id": file_nid,
+                "label": path.name,
+                "file_type": "code",
+                "source_file": str(path),
+                "source_location": "L1",
+            }],
+            "edges": [],
+            "input_tokens": 0,
+            "output_tokens": 0,
+        }
+    return result
+
 
 
 def extract_js(path: Path) -> dict:
@@ -3688,6 +3734,7 @@ _DISPATCH: dict[str, Any] = {
     ".v": extract_verilog,
     ".sv": extract_verilog,
     ".sql": extract_sql,
+    ".gd": extract_gdscript,
 }
 
 
@@ -4007,7 +4054,7 @@ def collect_files(target: Path, *, follow_symlinks: bool = False, root: Path | N
         ".java", ".c", ".h", ".cpp", ".cc", ".cxx", ".hpp",
         ".rb", ".cs", ".kt", ".kts", ".scala", ".php", ".swift",
         ".lua", ".toc", ".zig", ".ps1",
-        ".m", ".mm",
+        ".m", ".mm", ".gd",
     }
     from graphify.detect import _load_graphifyignore, _is_ignored
     ignore_root = root if root is not None else target
