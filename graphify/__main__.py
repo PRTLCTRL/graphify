@@ -1130,6 +1130,9 @@ def main() -> None:
         print("  pi install              write skill to ~/.pi/agent/skills/graphify/ (Pi coding agent)")
         print("  pi uninstall            remove skill from ~/.pi/agent/skills/graphify/")
         print()
+        print("Environment variables:")
+        print("  GRAPHIFY_OUT=<dir>      override output directory (default: graphify-out)")
+        print()
         return
 
     cmd = sys.argv[1]
