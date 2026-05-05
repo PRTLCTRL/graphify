@@ -1043,6 +1043,40 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Parse global --out / --output flag before command dispatch
+    # This allows users to specify a custom output directory for graphify-out/
+    args = sys.argv[1:]
+    custom_output_dir = None
+    filtered_args = []
+    i = 0
+    while i < len(args):
+        if args[i] in ("--out", "--output", "-o"):
+            if i + 1 < len(args):
+                custom_output_dir = args[i + 1]
+                i += 2
+            else:
+                print(f"error: {args[i]} requires a directory argument", file=sys.stderr)
+                sys.exit(1)
+        elif args[i].startswith("--out="):
+            custom_output_dir = args[i].split("=", 1)[1]
+            i += 1
+        elif args[i].startswith("--output="):
+            custom_output_dir = args[i].split("=", 1)[1]
+            i += 1
+        else:
+            filtered_args.append(args[i])
+            i += 1
+    
+    # Set GRAPHIFY_OUT environment variable if --out was provided
+    if custom_output_dir:
+        os.environ["GRAPHIFY_OUT"] = custom_output_dir
+        # Also update the module-level variable so it's visible to other functions
+        global _GRAPHIFY_OUT
+        _GRAPHIFY_OUT = custom_output_dir
+    
+    # Restore sys.argv with filtered args
+    sys.argv = [sys.argv[0]] + filtered_args
+    
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1085,12 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--out DIR] <command>")
+        print()
+        print("Global options:")
+        print("  --out DIR, --output DIR, -o DIR")
+        print("                          specify output directory (default: graphify-out)")
+        print("                          can also use GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
@@ -1278,7 +1317,7 @@ def main() -> None:
         question = sys.argv[2]
         use_dfs = "--dfs" in sys.argv
         budget = 2000
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         context_filters: list[str] = []
         args = sys.argv[3:]
         i = 0
@@ -1343,7 +1382,7 @@ def main() -> None:
         p.add_argument("--answer", required=True)
         p.add_argument("--type", dest="query_type", default="query")
         p.add_argument("--nodes", nargs="*", default=[])
-        p.add_argument("--memory-dir", default="graphify-out/memory")
+        p.add_argument("--memory-dir", default=f"{_GRAPHIFY_OUT}/memory")
         opts = p.parse_args(sys.argv[2:])
         from graphify.ingest import save_query_result as _sqr
         out = _sqr(
@@ -1363,7 +1402,7 @@ def main() -> None:
         import networkx as _nx
         source_label = sys.argv[2]
         target_label = sys.argv[3]
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         args = sys.argv[4:]
         for i, a in enumerate(args):
             if a == "--graph" and i + 1 < len(args):
@@ -1411,7 +1450,7 @@ def main() -> None:
         from graphify.serve import _find_node
         from networkx.readwrite import json_graph
         label = sys.argv[2]
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         args = sys.argv[3:]
         for i, a in enumerate(args):
             if a == "--graph" and i + 1 < len(args):
@@ -1702,7 +1741,7 @@ def main() -> None:
 
     elif cmd == "benchmark":
         from graphify.benchmark import run_benchmark, print_benchmark
-        graph_path = sys.argv[2] if len(sys.argv) > 2 else "graphify-out/graph.json"
+        graph_path = sys.argv[2] if len(sys.argv) > 2 else f"{_GRAPHIFY_OUT}/graph.json"
         # Try to load corpus_words from detect output
         corpus_words = None
         detect_path = Path(".graphify_detect.json")

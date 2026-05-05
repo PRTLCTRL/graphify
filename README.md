@@ -144,6 +144,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
+/graphify . --out docs/graph       # specify custom output directory (default: graphify-out)
 
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
@@ -175,6 +176,26 @@ dist/
 !src/
 !src/**
 ```
+
+---
+
+## Output directory
+
+By default, graphify writes to `graphify-out/` in the current directory. You can customize this:
+
+**Option 1: Command-line flag**
+```bash
+graphify . --out docs/graph
+graphify query "auth flow" --out docs/graph --graph docs/graph/graph.json
+```
+
+**Option 2: Environment variable**
+```bash
+export GRAPHIFY_OUT=docs/graph
+graphify .  # writes to docs/graph/ instead of graphify-out/
+```
+
+The environment variable persists across commands in the same shell session. Useful for scripts or when you want all graphify commands to use the same custom directory.
 
 ---
 
@@ -231,6 +252,7 @@ The MCP server gives your assistant structured access: `query_graph`, `get_node`
 ```
 /graphify                          # run on current directory
 /graphify ./raw                    # run on a specific folder
+/graphify ./raw --out my-docs/kg   # specify custom output directory (default: graphify-out)
 /graphify ./raw --mode deep        # more aggressive relationship extraction
 /graphify ./raw --update           # re-extract only changed files
 /graphify ./raw --directed         # preserve edge direction

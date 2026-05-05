@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                                             # full pipeline on current directory → Obsidian vault
 /graphify <path>                                      # full pipeline on specific path
+/graphify <path> --out docs/graph                     # specify custom output directory (default: graphify-out)
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
@@ -61,6 +62,12 @@ Use it for:
 If no path was given, use `.` (current directory). Do not ask the user for a path.
 
 If the path argument starts with `https://github.com/` or `http://github.com/`, treat it as a GitHub URL — run Step 0 before anything else, then continue with the resolved local path.
+
+**Output Directory:**
+- By default, graphify writes to `graphify-out/` in the current directory
+- Users can specify a custom directory with `--out <directory>` (e.g., `/graphify . --out docs/graph`)
+- If `--out` is provided, ALL references to `graphify-out/` in subsequent commands should use that directory instead
+- The `--out` flag must come BEFORE the path argument: `graphify --out custom-dir <path>`
 
 Follow these steps in order. Do not skip steps.
 
