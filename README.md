@@ -160,6 +160,25 @@ See the [full command reference](#full-command-reference) below.
 
 ---
 
+## Output directory
+
+By default, graphify writes to `graphify-out/` in your project root. You can specify a different output directory:
+
+```bash
+# Relative path (creates directory in current location)
+GRAPHIFY_OUT=docs/knowledge-graph graphify .
+
+# Absolute path (useful for shared team outputs)
+GRAPHIFY_OUT=/shared/team-docs/graphify-out graphify .
+
+# Feature branch isolation (useful with git worktrees)
+GRAPHIFY_OUT=graphify-out-feature-x graphify .
+```
+
+The environment variable works with all graphify commands: build, update, query, cluster-only, etc.
+
+---
+
 ## Ignoring files
 
 Create a `.graphifyignore` in your project root — same syntax as `.gitignore`, including `!` negation:
