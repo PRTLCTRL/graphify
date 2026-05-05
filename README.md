@@ -140,6 +140,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 
 ```bash
 /graphify .                        # build graph for current folder
+/graphify . --out docs/knowledge   # specify custom output directory
 /graphify ./docs --update          # re-extract only changed files
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
@@ -157,6 +158,23 @@ graphify merge-graphs a.json b.json              # combine two graphs
 ```
 
 See the [full command reference](#full-command-reference) below.
+
+---
+
+## Custom output directory
+
+By default, graphify writes to `graphify-out/`. You can specify a custom directory:
+
+```bash
+# Using the --out flag
+/graphify . --out docs/knowledge
+
+# Or set the environment variable
+export GRAPHIFY_OUT=docs/knowledge
+/graphify .
+```
+
+The custom directory will contain the same structure: `graph.json`, `GRAPH_REPORT.md`, `graph.html`, and `cache/`.
 
 ---
 

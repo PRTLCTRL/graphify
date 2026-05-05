@@ -16,7 +16,10 @@ class FileType(str, Enum):
     VIDEO = "video"
 
 
-_MANIFEST_PATH = "graphify-out/manifest.json"
+def _get_manifest_path() -> str:
+    """Get manifest path from environment or default."""
+    graphify_out = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+    return f"{graphify_out}/manifest.json"
 
 CODE_EXTENSIONS = {'.py', '.ts', '.js', '.jsx', '.tsx', '.mjs', '.ejs', '.go', '.rs', '.java', '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.rb', '.swift', '.kt', '.kts', '.cs', '.scala', '.php', '.lua', '.toc', '.zig', '.ps1', '.ex', '.exs', '.m', '.mm', '.jl', '.vue', '.svelte', '.dart', '.v', '.sv', '.sql', '.r'}
 DOC_EXTENSIONS = {'.md', '.mdx', '.txt', '.rst', '.html', '.yaml', '.yml'}
@@ -370,6 +373,10 @@ def _is_noise_dir(part: str) -> bool:
     """Return True if this directory name looks like a venv, cache, or dep dir."""
     if part in _SKIP_DIRS:
         return True
+    # Also skip the configured output directory
+    graphify_out_name = os.path.basename(os.environ.get("GRAPHIFY_OUT", "graphify-out"))
+    if part == graphify_out_name:
+        return True
     # Catch *_venv, *_repo/site-packages patterns
     if part.endswith("_venv") or part.endswith("_env"):
         return True
@@ -633,8 +640,9 @@ def detect(root: Path, *, follow_symlinks: bool = False) -> dict:
     ignore_patterns = _load_graphifyignore(root)
     include_patterns = _load_graphifyinclude(root)
 
-    # Always include graphify-out/memory/ - query results filed back into the graph
-    memory_dir = root / "graphify-out" / "memory"
+    # Always include output_dir/memory/ - query results filed back into the graph
+    graphify_out = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+    memory_dir = root / graphify_out / "memory"
     scan_paths = [root]
     if memory_dir.exists():
         scan_paths.append(memory_dir)
@@ -673,7 +681,7 @@ def detect(root: Path, *, follow_symlinks: bool = False) -> dict:
                     seen.add(p)
                     all_files.append(p)
 
-    converted_dir = root / "graphify-out" / "converted"
+    converted_dir = root / graphify_out / "converted"
 
     for p in all_files:
         # For memory dir files, skip hidden/noise filtering
@@ -749,16 +757,20 @@ def _md5_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def load_manifest(manifest_path: str = _MANIFEST_PATH) -> dict:
+def load_manifest(manifest_path: str | None = None) -> dict:
     """Load the manifest from a previous run. Returns {} on any error."""
+    if manifest_path is None:
+        manifest_path = _get_manifest_path()
     try:
         return json.loads(Path(manifest_path).read_text(encoding="utf-8"))
     except Exception:
         return {}
 
 
-def save_manifest(files: dict[str, list[str]], manifest_path: str = _MANIFEST_PATH) -> None:
+def save_manifest(files: dict[str, list[str]], manifest_path: str | None = None) -> None:
     """Save current file mtimes + content hashes for change detection on --update."""
+    if manifest_path is None:
+        manifest_path = _get_manifest_path()
     manifest: dict[str, dict] = {}
     for file_list in files.values():
         for f in file_list:
@@ -771,7 +783,7 @@ def save_manifest(files: dict[str, list[str]], manifest_path: str = _MANIFEST_PA
     Path(manifest_path).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
 
-def detect_incremental(root: Path, manifest_path: str = _MANIFEST_PATH) -> dict:
+def detect_incremental(root: Path, manifest_path: str | None = None) -> dict:
     """Like detect(), but returns only new or modified files since the last run.
 
     Fast path: mtime unchanged → unchanged (free, no hash).

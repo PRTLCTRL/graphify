@@ -1042,6 +1042,16 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
     return dest
 
 
+def _parse_output_dir(args: list[str]) -> str | None:
+    """Extract --out argument from command line and return the output directory."""
+    for i, arg in enumerate(args):
+        if arg == "--out" and i + 1 < len(args):
+            return args[i + 1]
+        if arg.startswith("--out="):
+            return arg.split("=", 1)[1]
+    return None
+
+
 def main() -> None:
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
@@ -1051,7 +1061,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--out <dir>]")
+        print()
+        print("Global options:")
+        print("  --out <dir>             output directory (default: graphify-out)")
+        print("                          can also be set via GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
@@ -1131,6 +1145,13 @@ def main() -> None:
         print("  pi uninstall            remove skill from ~/.pi/agent/skills/graphify/")
         print()
         return
+
+    # Parse and apply --out flag globally before processing commands
+    output_dir = _parse_output_dir(sys.argv)
+    if output_dir:
+        os.environ["GRAPHIFY_OUT"] = output_dir
+        global _GRAPHIFY_OUT
+        _GRAPHIFY_OUT = output_dir
 
     cmd = sys.argv[1]
     if cmd == "install":
