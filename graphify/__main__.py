@@ -14,8 +14,9 @@ try:
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
+# Output directory — override with GRAPHIFY_OUT env var or --output flag.
 # Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
+# Priority: CLI flag > env var > default
 _GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
 
@@ -1059,6 +1060,11 @@ def main() -> None:
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
         print("  explain \"X\"             plain-language explanation of a node and its neighbors")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print()
+        print("Environment Variables:")
+        print("  GRAPHIFY_OUT=<dir>      override output directory (default: graphify-out)")
+        print("                          example: GRAPHIFY_OUT=docs/graph /graphify .")
+        print("                          or: /graphify . --output docs/graph")
         print("  clone <github-url>      clone a GitHub repo locally and print its path for /graphify")
         print("  merge-graphs <g1> <g2>  merge two or more graph.json files into one cross-repo graph")
         print("    --out <path>            output path (default: graphify-out/merged-graph.json)")

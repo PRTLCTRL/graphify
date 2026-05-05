@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                                             # full pipeline on current directory → Obsidian vault
 /graphify <path>                                      # full pipeline on specific path
+/graphify <path> --output docs/knowledge-graph        # custom output directory (default: graphify-out)
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
@@ -62,6 +63,8 @@ If no path was given, use `.` (current directory). Do not ask the user for a pat
 
 If the path argument starts with `https://github.com/` or `http://github.com/`, treat it as a GitHub URL — run Step 0 before anything else, then continue with the resolved local path.
 
+**Custom output directory:** If `--output <dir>` or `--output=<dir>` is specified, set `export GRAPHIFY_OUT=<dir>` before running any commands. All output files will be written to this directory instead of `graphify-out/`. For simplicity, the rest of this document assumes the default `graphify-out/` — replace with `$GRAPHIFY_OUT` when using a custom output directory.
+
 Follow these steps in order. Do not skip steps.
 
 ### Step 0 - Clone GitHub repo(s) (only if a GitHub URL was given)
@@ -89,6 +92,30 @@ Graphify clones into `~/.graphify/repos/<owner>/<repo>` and reuses existing clon
 
 ### Step 1 - Ensure graphify is installed
 
+First, parse command-line flags and set up the output directory:
+
+```bash
+# Parse --output flag from command line arguments
+# This allows /graphify . --output docs/knowledge-graph
+for i in "$@"; do
+    case "$i" in
+        --output=*)
+            export GRAPHIFY_OUT="${i#*=}"
+            ;;
+        --output)
+            shift
+            export GRAPHIFY_OUT="$1"
+            ;;
+    esac
+done
+
+# Set default if not already set
+GRAPHIFY_OUT="${GRAPHIFY_OUT:-graphify-out}"
+export GRAPHIFY_OUT
+```
+
+Then detect and install graphify:
+
 ```bash
 # Detect the correct Python interpreter (handles uv tool, pipx, venv, system installs)
 PYTHON=""
@@ -110,10 +137,10 @@ fi
 if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
 "$PYTHON" -c "import graphify" 2>/dev/null || "$PYTHON" -m pip install graphifyy -q 2>/dev/null || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
 # Write interpreter path for all subsequent steps (persists across invocations)
-mkdir -p graphify-out
-"$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w').write(sys.executable)"
+mkdir -p "$GRAPHIFY_OUT"
+"$PYTHON" -c "import sys; open('$GRAPHIFY_OUT/.graphify_python', 'w').write(sys.executable)"
 # Save scan root so `graphify update` (no args) knows where to look next time
-echo "$(cd INPUT_PATH && pwd)" > graphify-out/.graphify_root
+echo "$(cd INPUT_PATH && pwd)" > "$GRAPHIFY_OUT/.graphify_root"
 ```
 
 If the import succeeds, print nothing and move straight to Step 2.

@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                     # full pipeline on current directory
 /graphify <path>              # full pipeline on specific path
+/graphify <path> --output docs/knowledge-graph        # custom output directory (default: graphify-out)
 /graphify <path> --update     # incremental - re-extract only new/changed files
 /graphify <path> --no-viz     # skip visualization, just report + JSON
 /graphify <path> --wiki       # build agent-crawlable wiki
