@@ -231,6 +231,7 @@ The MCP server gives your assistant structured access: `query_graph`, `get_node`
 ```
 /graphify                          # run on current directory
 /graphify ./raw                    # run on a specific folder
+/graphify ./raw --out docs/graph   # write output to custom directory (default: graphify-out)
 /graphify ./raw --mode deep        # more aggressive relationship extraction
 /graphify ./raw --update           # re-extract only changed files
 /graphify ./raw --directed         # preserve edge direction

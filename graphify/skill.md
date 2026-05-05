@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                                             # full pipeline on current directory → Obsidian vault
 /graphify <path>                                      # full pipeline on specific path
+/graphify <path> --out <dir>                          # write output to custom directory (default: graphify-out)
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
@@ -90,6 +91,18 @@ Graphify clones into `~/.graphify/repos/<owner>/<repo>` and reuses existing clon
 ### Step 1 - Ensure graphify is installed
 
 ```bash
+# Parse --out flag from user input (defaults to graphify-out)
+OUTPUT_DIR="graphify-out"
+for arg in "$@"; do
+    if [[ "$arg" == --out=* ]]; then
+        OUTPUT_DIR="${arg#--out=}"
+    elif [[ "$prev_arg" == "--out" ]]; then
+        OUTPUT_DIR="$arg"
+    fi
+    prev_arg="$arg"
+done
+export GRAPHIFY_OUT="$OUTPUT_DIR"
+
 # Detect the correct Python interpreter (handles uv tool, pipx, venv, system installs)
 PYTHON=""
 GRAPHIFY_BIN=$(which graphify 2>/dev/null)
@@ -110,26 +123,26 @@ fi
 if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
 "$PYTHON" -c "import graphify" 2>/dev/null || "$PYTHON" -m pip install graphifyy -q 2>/dev/null || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
 # Write interpreter path for all subsequent steps (persists across invocations)
-mkdir -p graphify-out
-"$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w').write(sys.executable)"
+mkdir -p "$OUTPUT_DIR"
+"$PYTHON" -c "import sys; open('$OUTPUT_DIR/.graphify_python', 'w').write(sys.executable)"
 # Save scan root so `graphify update` (no args) knows where to look next time
-echo "$(cd INPUT_PATH && pwd)" > graphify-out/.graphify_root
+echo "$(cd INPUT_PATH && pwd)" > "$OUTPUT_DIR/.graphify_root"
 ```
 
 If the import succeeds, print nothing and move straight to Step 2.
 
-**In every subsequent bash block, replace `python3` with `$(cat graphify-out/.graphify_python)` to use the correct interpreter.**
+**In every subsequent bash block, replace `python3` with `$(cat $OUTPUT_DIR/.graphify_python)` to use the correct interpreter.**
 
 ### Step 2 - Detect files
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+$(cat $OUTPUT_DIR/.graphify_python) -c "
 import json
 from graphify.detect import detect
 from pathlib import Path
 result = detect(Path('INPUT_PATH'))
 print(json.dumps(result))
-" > graphify-out/.graphify_detect.json
+" > "$OUTPUT_DIR/.graphify_detect.json"
 ```
 
 Replace INPUT_PATH with the actual path the user provided. Do NOT cat or print the JSON - read it silently and present a clean summary instead:
@@ -174,22 +187,22 @@ Set it as `WHISPER_PROMPT` to use in the next command.
 
 ```bash
 GRAPHIFY_WHISPER_MODEL=base  # or whatever --whisper-model the user passed
-$(cat graphify-out/.graphify_python) -c "
+$(cat $OUTPUT_DIR/.graphify_python) -c "
 import json, os
 from pathlib import Path
 from graphify.transcribe import transcribe_all
 
-detect = json.loads(Path('graphify-out/.graphify_detect.json').read_text())
+detect = json.loads(Path('$OUTPUT_DIR/.graphify_detect.json').read_text())
 video_files = detect.get('files', {}).get('video', [])
 prompt = os.environ.get('GRAPHIFY_WHISPER_PROMPT', 'Use proper punctuation and paragraph breaks.')
 
 transcript_paths = transcribe_all(video_files, initial_prompt=prompt)
 print(json.dumps(transcript_paths))
-" > graphify-out/.graphify_transcripts.json
+" > "$OUTPUT_DIR/.graphify_transcripts.json"
 ```
 
 After transcription:
-- Read the transcript paths from `graphify-out/.graphify_transcripts.json`
+- Read the transcript paths from `$OUTPUT_DIR/.graphify_transcripts.json`
 - Add them to the docs list before dispatching semantic subagents in Step 3B
 - Print how many transcripts were created: `Transcribed N video file(s) -> treating as docs`
 - If transcription fails for a file, print a warning and continue with the rest

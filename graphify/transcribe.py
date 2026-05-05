@@ -10,8 +10,13 @@ VIDEO_EXTENSIONS = {'.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.mp3', '.w
 URL_PREFIXES = ('http://', 'https://', 'www.')
 
 _DEFAULT_MODEL = "base"
-_TRANSCRIPTS_DIR = "graphify-out/transcripts"
 _FALLBACK_PROMPT = "Use proper punctuation and paragraph breaks."
+
+
+def _get_transcripts_dir() -> str:
+    """Return the transcripts directory based on configured output dir."""
+    output_dir = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+    return f"{output_dir}/transcripts"
 
 
 def _model_name() -> str:
@@ -128,7 +133,7 @@ def transcribe(
     initial_prompt: domain hint for Whisper (built from corpus god nodes).
     force: re-transcribe even if transcript already exists.
     """
-    out_dir = Path(output_dir) if output_dir else Path(_TRANSCRIPTS_DIR)
+    out_dir = Path(output_dir) if output_dir else Path(_get_transcripts_dir())
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if is_url(str(video_path)):
