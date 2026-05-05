@@ -216,6 +216,8 @@ Rules:
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
 - After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+
+Note: If GRAPHIFY_OUT environment variable is set to a custom directory, use that path instead of graphify-out/ everywhere above.
 """
 
 _CLAUDE_MD_MARKER = "## graphify"
@@ -232,6 +234,8 @@ Rules:
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
 - After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+
+Note: If GRAPHIFY_OUT environment variable is set to a custom directory, use that path instead of graphify-out/ everywhere above.
 """
 
 _AGENTS_MD_MARKER = "## graphify"
@@ -246,6 +250,8 @@ Rules:
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
 - After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+
+Note: If GRAPHIFY_OUT environment variable is set to a custom directory, use that path instead of graphify-out/ everywhere above.
 """
 
 _GEMINI_MD_MARKER = "## graphify"
@@ -461,6 +467,8 @@ Rules:
 - If the graphify MCP server is active, utilize tools like `query_graph`, `get_node`, and `shortest_path` for precise architecture navigation instead of falling back to `grep`
 - If the MCP server is not active, the CLI equivalents are `graphify query "<question>"`, `graphify path "<A>" "<B>"`, and `graphify explain "<concept>"` — prefer these over grep for cross-module questions
 - After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+
+Note: If GRAPHIFY_OUT environment variable is set to a custom directory, use that path instead of graphify-out/ everywhere above.
 """
 
 _ANTIGRAVITY_WORKFLOW = """\
@@ -635,6 +643,8 @@ This project has a graphify knowledge graph at graphify-out/.
 - Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+
+Note: If GRAPHIFY_OUT environment variable is set to a custom directory, use that path instead of graphify-out/ everywhere above.
 """
 
 
@@ -1052,6 +1062,10 @@ def main() -> None:
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print("Usage: graphify <command>")
+        print()
+        print("Environment:")
+        print("  GRAPHIFY_OUT=<dir>      custom output directory (default: graphify-out)")
+        print("                          Example: GRAPHIFY_OUT=docs/graph graphify query \"...\"")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")

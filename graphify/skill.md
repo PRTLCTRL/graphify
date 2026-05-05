@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                                             # full pipeline on current directory → Obsidian vault
 /graphify <path>                                      # full pipeline on specific path
+/graphify <path> --out docs/graph                     # write output to custom directory (default: graphify-out)
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
@@ -60,6 +61,8 @@ Use it for:
 
 If no path was given, use `.` (current directory). Do not ask the user for a path.
 
+**Parse the `--out` flag first:** If the user provided `--out <directory>`, extract that value and set `GRAPHIFY_OUT=<directory>` as an environment variable for all subsequent commands in this session. The default is `graphify-out`. **Important:** Throughout this skill, whenever you see `graphify-out` in a bash code block or file path, replace it with `$GRAPHIFY_OUT` (in bash) or the actual value you parsed. When referencing files like `.graphify_python` or `.graphify_detect.json`, they should be located at `$GRAPHIFY_OUT/.graphify_python`, `$GRAPHIFY_OUT/.graphify_detect.json`, etc.
+
 If the path argument starts with `https://github.com/` or `http://github.com/`, treat it as a GitHub URL — run Step 0 before anything else, then continue with the resolved local path.
 
 Follow these steps in order. Do not skip steps.
@@ -90,6 +93,10 @@ Graphify clones into `~/.graphify/repos/<owner>/<repo>` and reuses existing clon
 ### Step 1 - Ensure graphify is installed
 
 ```bash
+# Parse --out flag if provided (default: graphify-out)
+GRAPHIFY_OUT="${GRAPHIFY_OUT:-graphify-out}"
+export GRAPHIFY_OUT
+
 # Detect the correct Python interpreter (handles uv tool, pipx, venv, system installs)
 PYTHON=""
 GRAPHIFY_BIN=$(which graphify 2>/dev/null)
@@ -110,26 +117,26 @@ fi
 if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
 "$PYTHON" -c "import graphify" 2>/dev/null || "$PYTHON" -m pip install graphifyy -q 2>/dev/null || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
 # Write interpreter path for all subsequent steps (persists across invocations)
-mkdir -p graphify-out
-"$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w').write(sys.executable)"
+mkdir -p "$GRAPHIFY_OUT"
+"$PYTHON" -c "import sys; open('$GRAPHIFY_OUT/.graphify_python', 'w').write(sys.executable)"
 # Save scan root so `graphify update` (no args) knows where to look next time
-echo "$(cd INPUT_PATH && pwd)" > graphify-out/.graphify_root
+echo "$(cd INPUT_PATH && pwd)" > "$GRAPHIFY_OUT/.graphify_root"
 ```
 
 If the import succeeds, print nothing and move straight to Step 2.
 
-**In every subsequent bash block, replace `python3` with `$(cat graphify-out/.graphify_python)` to use the correct interpreter.**
+**In every subsequent bash block, replace `python3` with `$(cat $GRAPHIFY_OUT/.graphify_python)` to use the correct interpreter.**
 
 ### Step 2 - Detect files
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+$(cat $GRAPHIFY_OUT/.graphify_python) -c "
 import json
 from graphify.detect import detect
 from pathlib import Path
 result = detect(Path('INPUT_PATH'))
 print(json.dumps(result))
-" > graphify-out/.graphify_detect.json
+" > "$GRAPHIFY_OUT/.graphify_detect.json"
 ```
 
 Replace INPUT_PATH with the actual path the user provided. Do NOT cat or print the JSON - read it silently and present a clean summary instead:
