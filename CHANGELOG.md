@@ -2,6 +2,10 @@
 
 Full release notes with details on each version: [GitHub Releases](https://github.com/safishamsi/graphify/releases)
 
+## Unreleased
+
+- Feat: `--output DIR` / `-o DIR` CLI flag to specify custom output directory (complements existing `GRAPHIFY_OUT` env var) (#536)
+
 ## 0.6.9 (2026-05-03)
 
 - Fix: `source_file` path separators normalized to forward slashes at graph ingestion — same physical file emitted with backslashes (Windows AST extractor) and forward slashes (semantic subagents) now merges into one node instead of splitting into two disconnected components (#683)

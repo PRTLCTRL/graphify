@@ -152,6 +152,10 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify add https://arxiv.org/abs/1706.03762   # fetch a paper and add it
 /graphify add <youtube-url>                       # transcribe and add a video
 
+graphify --output docs/knowledge-graph .         # use custom output directory
+graphify -o my-graph .                           # shorthand for --output
+export GRAPHIFY_OUT=docs/graph && graphify .     # or use environment variable
+
 graphify hook install              # auto-rebuild on git commit
 graphify merge-graphs a.json b.json              # combine two graphs
 ```
