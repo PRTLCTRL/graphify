@@ -141,6 +141,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 ```bash
 /graphify .                        # build graph for current folder
 /graphify ./docs --update          # re-extract only changed files
+/graphify . --output docs/graph    # use custom output directory
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
@@ -157,6 +158,33 @@ graphify merge-graphs a.json b.json              # combine two graphs
 ```
 
 See the [full command reference](#full-command-reference) below.
+
+---
+
+## Custom output directory
+
+By default, graphify writes all outputs to `graphify-out/` in the project root. You can customize this:
+
+**Option 1: CLI flag**
+```bash
+graphify . --output docs/knowledge-graph
+graphify . -o /shared/team-graph
+```
+
+**Option 2: Environment variable**
+```bash
+export GRAPHIFY_OUT=.graphify
+graphify .
+```
+
+The output directory can be:
+- **Relative** (e.g. `docs/graph`) — created inside the scan directory
+- **Absolute** (e.g. `/shared/team-graph`) — for multi-project or shared setups
+
+Use cases:
+- Keep graph in existing docs/ folder for version control
+- Share one graph across git worktrees
+- Hide output directory (.graphify instead of graphify-out/)
 
 ---
 

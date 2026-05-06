@@ -985,6 +985,51 @@ def claude_uninstall(project_dir: Path | None = None) -> None:
     _uninstall_claude_hook(project_dir or Path("."))
 
 
+def _process_output_flag() -> None:
+    """Parse --output/-o flag from argv and set GRAPHIFY_OUT environment variable.
+    
+    This allows users to specify a custom output directory via CLI flag instead of
+    or in addition to the GRAPHIFY_OUT environment variable. The CLI flag takes
+    precedence over the environment variable.
+    
+    Removes the flag and its value from sys.argv so subsequent command parsing works.
+    """
+    output_dir = None
+    args_to_remove = []
+    
+    i = 1  # Start after the script name
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        
+        if arg in ("--output", "-o"):
+            # Next arg should be the directory
+            if i + 1 < len(sys.argv):
+                output_dir = sys.argv[i + 1]
+                args_to_remove.extend([i, i + 1])
+                i += 2
+            else:
+                print("error: --output requires a directory argument", file=sys.stderr)
+                sys.exit(1)
+        elif arg.startswith("--output="):
+            output_dir = arg.split("=", 1)[1]
+            args_to_remove.append(i)
+            i += 1
+        elif arg.startswith("-o="):
+            output_dir = arg.split("=", 1)[1]
+            args_to_remove.append(i)
+            i += 1
+        else:
+            i += 1
+    
+    # Remove the flag arguments from sys.argv (in reverse order to preserve indices)
+    for idx in sorted(args_to_remove, reverse=True):
+        sys.argv.pop(idx)
+    
+    # Set the environment variable if a flag was provided
+    if output_dir:
+        os.environ["GRAPHIFY_OUT"] = output_dir
+
+
 def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None) -> Path:
     """Clone a GitHub repo to a local cache dir and return the path.
 
@@ -1050,8 +1095,16 @@ def main() -> None:
         for skill_dst in {Path.home() / cfg["skill_dst"] for cfg in _PLATFORM_CONFIG.values()}:
             _check_skill_version(skill_dst)
 
+    # Parse global --output flag and set GRAPHIFY_OUT environment variable
+    # This must happen before any command processing since many commands read _GRAPHIFY_OUT
+    _process_output_flag()
+
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--output DIR]")
+        print()
+        print("Global Options:")
+        print("  --output DIR, -o DIR    set output directory (default: graphify-out)")
+        print("                          can also use GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")

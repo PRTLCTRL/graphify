@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                                             # full pipeline on current directory → Obsidian vault
 /graphify <path>                                      # full pipeline on specific path
+/graphify <path> --output docs/graphify-out           # use custom output directory
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
@@ -55,6 +56,23 @@ Use it for:
 - A reading list (papers + tweets + notes → one navigable graph)
 - A research corpus (citation graph + concept graph in one)
 - Your personal /raw folder (drop everything in, let it grow, query it)
+
+## Custom Output Directory
+
+By default, graphify writes all outputs to `graphify-out/` in the scan directory. You can customize this in three ways:
+
+1. **CLI flag:** `--output <dir>` or `-o <dir>` (works with any graphify command)
+2. **Environment variable:** `GRAPHIFY_OUT=<dir>` (project-wide override)
+3. **Absolute path:** Both methods accept absolute paths for shared output directories
+
+Examples:
+```
+/graphify . --output docs/knowledge-graph        # relative to scan directory
+/graphify . -o /shared/team-graph                # absolute path
+GRAPHIFY_OUT=.graphify /graphify .               # hidden directory via env var
+```
+
+When using a custom output directory, all references to `graphify-out/` in this skill should be replaced with your chosen directory name.
 
 ## What You Must Do When Invoked
 
