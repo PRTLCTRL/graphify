@@ -11,12 +11,13 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ## Usage
 
 ```
-/graphify                     # full pipeline on current directory
-/graphify <path>              # full pipeline on specific path
-/graphify <path> --update     # incremental - re-extract only new/changed files
-/graphify <path> --no-viz     # skip visualization, just report + JSON
-/graphify <path> --wiki       # build agent-crawlable wiki
-/graphify query "<question>"  # BFS traversal - broad context
+/graphify                              # full pipeline on current directory
+/graphify <path>                       # full pipeline on specific path
+/graphify <path> --update              # incremental - re-extract only new/changed files
+/graphify <path> --output docs/graph   # custom output directory (default: graphify-out)
+/graphify <path> --no-viz              # skip visualization, just report + JSON
+/graphify <path> --wiki                # build agent-crawlable wiki
+/graphify query "<question>"           # BFS traversal - broad context
 ```
 
 ## What You Must Do When Invoked

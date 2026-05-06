@@ -19,6 +19,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 /graphify <path> --mode deep                          # thorough extraction, richer INFERRED edges
 /graphify <path> --update                             # incremental - re-extract only new/changed files
 /graphify <path> --directed                            # build directed graph (preserves edge direction: source→target)
+/graphify <path> --output docs/graph                  # custom output directory (default: graphify-out)
 /graphify <path> --whisper-model medium                # use a larger Whisper model for better transcription accuracy
 /graphify <path> --cluster-only                       # rerun clustering on existing graph
 /graphify <path> --no-viz                             # skip visualization, just report + JSON
@@ -62,6 +63,21 @@ If no path was given, use `.` (current directory). Do not ask the user for a pat
 
 If the path argument starts with `https://github.com/` or `http://github.com/`, treat it as a GitHub URL — run Step 0 before anything else, then continue with the resolved local path.
 
+**Parse command-line flags:** Before starting the steps, extract any flags from the invocation:
+- `--output <dir>` or `-o <dir>`: custom output directory (set `GRAPHIFY_OUT` environment variable)
+- `--mode deep`: enable deeper semantic extraction (set `DEEP_MODE=true`)
+- `--directed`: build directed graph (pass to build_from_json)
+- `--update`: incremental re-extraction
+- `--cluster-only`: skip extraction, rerun clustering only
+- `--whisper-model <model>`: Whisper model name (set `GRAPHIFY_WHISPER_MODEL`)
+- `--no-viz`: skip HTML generation
+- `--svg`, `--graphml`, `--neo4j`, `--neo4j-push`, `--obsidian`, `--wiki`, `--watch`, `--mcp`: export/mode flags
+
+**Important:** If `--output <dir>` is present, set the environment variable before any Python code runs:
+```bash
+export GRAPHIFY_OUT="<dir>"
+```
+
 Follow these steps in order. Do not skip steps.
 
 ### Step 0 - Clone GitHub repo(s) (only if a GitHub URL was given)
@@ -90,6 +106,10 @@ Graphify clones into `~/.graphify/repos/<owner>/<repo>` and reuses existing clon
 ### Step 1 - Ensure graphify is installed
 
 ```bash
+# Set default output directory if not already set by --output flag
+: ${GRAPHIFY_OUT:=graphify-out}
+export GRAPHIFY_OUT
+
 # Detect the correct Python interpreter (handles uv tool, pipx, venv, system installs)
 PYTHON=""
 GRAPHIFY_BIN=$(which graphify 2>/dev/null)
@@ -110,26 +130,26 @@ fi
 if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
 "$PYTHON" -c "import graphify" 2>/dev/null || "$PYTHON" -m pip install graphifyy -q 2>/dev/null || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
 # Write interpreter path for all subsequent steps (persists across invocations)
-mkdir -p graphify-out
-"$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w').write(sys.executable)"
+mkdir -p "$GRAPHIFY_OUT"
+"$PYTHON" -c "import sys; open('$GRAPHIFY_OUT/.graphify_python', 'w').write(sys.executable)"
 # Save scan root so `graphify update` (no args) knows where to look next time
-echo "$(cd INPUT_PATH && pwd)" > graphify-out/.graphify_root
+echo "$(cd INPUT_PATH && pwd)" > "$GRAPHIFY_OUT/.graphify_root"
 ```
 
 If the import succeeds, print nothing and move straight to Step 2.
 
-**In every subsequent bash block, replace `python3` with `$(cat graphify-out/.graphify_python)` to use the correct interpreter.**
+**In every subsequent bash block, replace `python3` with `$(cat $GRAPHIFY_OUT/.graphify_python)` to use the correct interpreter.**
 
 ### Step 2 - Detect files
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+$(cat $GRAPHIFY_OUT/.graphify_python) -c "
 import json
 from graphify.detect import detect
 from pathlib import Path
 result = detect(Path('INPUT_PATH'))
 print(json.dumps(result))
-" > graphify-out/.graphify_detect.json
+" > $GRAPHIFY_OUT/.graphify_detect.json
 ```
 
 Replace INPUT_PATH with the actual path the user provided. Do NOT cat or print the JSON - read it silently and present a clean summary instead:
