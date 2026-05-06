@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                                             # full pipeline on current directory → Obsidian vault
 /graphify <path>                                      # full pipeline on specific path
+/graphify <path> --out <dir>                          # specify custom output directory (default: graphify-out)
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
@@ -40,6 +41,23 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 /graphify path "AuthModule" "Database"                # shortest path between two concepts
 /graphify explain "SwinTransformer"                   # plain-language explanation of a node
 ```
+
+## Output Directory
+
+By default, graphify writes output to `graphify-out/` in the scanned directory. You can customize this in three ways:
+
+1. **Command-line flag**: `/graphify <path> --out my-docs` (highest priority)
+2. **Environment variable**: `export GRAPHIFY_OUT=my-docs` (overrides default)
+3. **Default**: `graphify-out/` (used if neither flag nor env var is set)
+
+The `--out` flag accepts:
+- Relative names: `--out docs` → creates `./docs/`
+- Absolute paths: `--out /shared/project-graph` → creates `/shared/project-graph/`
+
+This is useful when:
+- Your project has existing documentation directories (`docs/`, `wiki/`, etc.)
+- You're working in a monorepo and want separate graphs per service
+- You need multiple graph variants for the same codebase (e.g. different extraction modes)
 
 ## What graphify is for
 
