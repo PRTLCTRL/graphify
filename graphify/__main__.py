@@ -1043,6 +1043,33 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Parse global --output flag before any command
+    args = sys.argv[1:]
+    output_dir: str | None = None
+    filtered_args = []
+    i = 0
+    while i < len(args):
+        if args[i] == "--output" and i + 1 < len(args):
+            output_dir = args[i + 1]
+            i += 2
+        elif args[i].startswith("--output="):
+            output_dir = args[i].split("=", 1)[1]
+            i += 1
+        elif args[i] in ("-o",) and i + 1 < len(args):
+            output_dir = args[i + 1]
+            i += 2
+        else:
+            filtered_args.append(args[i])
+            i += 1
+    
+    # Update sys.argv to reflect filtered args and set environment variable
+    sys.argv = [sys.argv[0]] + filtered_args
+    if output_dir:
+        os.environ["GRAPHIFY_OUT"] = output_dir
+        # Reload the module-level constant in this module
+        global _GRAPHIFY_OUT
+        _GRAPHIFY_OUT = output_dir
+    
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1078,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--output DIR] <command>")
+        print()
+        print("Global options:")
+        print("  --output DIR, -o DIR    set output directory (default: graphify-out)")
+        print("                          can also use GRAPHIFY_OUT env var")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
@@ -1278,7 +1309,7 @@ def main() -> None:
         question = sys.argv[2]
         use_dfs = "--dfs" in sys.argv
         budget = 2000
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         context_filters: list[str] = []
         args = sys.argv[3:]
         i = 0
@@ -1363,7 +1394,7 @@ def main() -> None:
         import networkx as _nx
         source_label = sys.argv[2]
         target_label = sys.argv[3]
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         args = sys.argv[4:]
         for i, a in enumerate(args):
             if a == "--graph" and i + 1 < len(args):
@@ -1411,7 +1442,7 @@ def main() -> None:
         from graphify.serve import _find_node
         from networkx.readwrite import json_graph
         label = sys.argv[2]
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         args = sys.argv[3:]
         for i, a in enumerate(args):
             if a == "--graph" and i + 1 < len(args):
