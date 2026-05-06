@@ -144,6 +144,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
+/graphify . --output docs/graph    # custom output directory (default: graphify-out)
 
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
@@ -175,6 +176,30 @@ dist/
 !src/
 !src/**
 ```
+
+---
+
+## Custom output directory
+
+By default, graphify writes to `graphify-out/` in your project root. You can customize this in two ways:
+
+**1. Using the `--output` flag:**
+```bash
+/graphify . --output docs/knowledge-graph
+```
+
+**2. Using the `GRAPHIFY_OUT` environment variable:**
+```bash
+export GRAPHIFY_OUT=docs/knowledge-graph
+/graphify .
+```
+
+This is useful when:
+- Your project has an established documentation structure where you want graphify output to live
+- You're working with git worktrees and want separate graphs per branch
+- You're building multiple graphs from different subsets of your codebase
+
+The output directory can be a relative path (like `docs/graph`) or an absolute path (like `/shared/team-graph`).
 
 ---
 
@@ -236,6 +261,7 @@ The MCP server gives your assistant structured access: `query_graph`, `get_node`
 /graphify ./raw --directed         # preserve edge direction
 /graphify ./raw --cluster-only     # rerun clustering on existing graph
 /graphify ./raw --no-viz           # skip HTML visualization
+/graphify ./raw --output docs/kb   # custom output directory (default: graphify-out)
 /graphify ./raw --obsidian         # generate Obsidian vault
 /graphify ./raw --wiki             # build agent-crawlable markdown wiki
 /graphify ./raw --svg              # export graph.svg
