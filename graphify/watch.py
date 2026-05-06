@@ -36,18 +36,25 @@ def _relativize_source_files(payload: dict, root: Path) -> None:
                 continue
 
 
-def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: bool = False) -> bool:
+def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: bool = False, out_dir: str | None = None) -> bool:
     """Re-run AST extraction + build + cluster + report for code files. No LLM needed.
 
     When ``force`` is True the node-count safety check in ``to_json`` is bypassed
     so the rebuilt graph overwrites graph.json even if it has fewer nodes.
     Use this after refactors that legitimately delete code.
 
+    Args:
+        watch_path: Path to watch and rebuild
+        follow_symlinks: Whether to follow symbolic links
+        force: Bypass node-count safety check
+        out_dir: Output directory (default: from GRAPHIFY_OUT env var or "graphify-out")
+
     Returns True on success, False on error.
     """
     watch_root = watch_path.resolve()
     project_root = Path.cwd().resolve() if not watch_path.is_absolute() else watch_root
     report_root = _report_root_label(watch_path)
+    effective_out = out_dir if out_dir else _GRAPHIFY_OUT
     try:
         from graphify.extract import extract
         from graphify.detect import detect
@@ -71,7 +78,7 @@ def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: boo
         # Filter by node ID membership in the new AST output, not by file_type —
         # INFERRED/AMBIGUOUS nodes extracted from code files also carry file_type="code"
         # and would be wrongly dropped by a file_type-based filter.
-        out = watch_path / _GRAPHIFY_OUT
+        out = watch_path / effective_out
         existing_graph = out / "graph.json"
         if existing_graph.exists():
             try:
@@ -154,24 +161,35 @@ def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: boo
         return False
 
 
-def check_update(watch_path: Path) -> bool:
+def check_update(watch_path: Path, out_dir: str | None = None) -> bool:
     """Check for pending semantic update flag and notify the user if set.
 
     Cron-safe: always returns True so cron jobs do not alarm.
     Non-code file changes (docs, papers, images) require LLM-backed
     re-extraction via `/graphify --update` — this function only signals
     that the update is needed.
+    
+    Args:
+        watch_path: Path to check for updates
+        out_dir: Output directory (default: from GRAPHIFY_OUT env var or "graphify-out")
     """
-    flag = Path(watch_path) / _GRAPHIFY_OUT / "needs_update"
+    effective_out = out_dir if out_dir else _GRAPHIFY_OUT
+    flag = Path(watch_path) / effective_out / "needs_update"
     if flag.exists():
         print(f"[graphify check-update] Pending non-code changes in {watch_path}.")
         print("[graphify check-update] Run `/graphify --update` to apply semantic re-extraction.")
     return True
 
 
-def _notify_only(watch_path: Path) -> None:
-    """Write a flag file and print a notification (fallback for non-code-only corpora)."""
-    flag = watch_path / _GRAPHIFY_OUT / "needs_update"
+def _notify_only(watch_path: Path, out_dir: str | None = None) -> None:
+    """Write a flag file and print a notification (fallback for non-code-only corpora).
+    
+    Args:
+        watch_path: Path being watched
+        out_dir: Output directory (default: from GRAPHIFY_OUT env var or "graphify-out")
+    """
+    effective_out = out_dir if out_dir else _GRAPHIFY_OUT
+    flag = watch_path / effective_out / "needs_update"
     flag.parent.mkdir(parents=True, exist_ok=True)
     flag.write_text("1", encoding="utf-8")
     print(f"\n[graphify watch] New or changed files detected in {watch_path}")
@@ -184,7 +202,7 @@ def _has_non_code(changed_paths: list[Path]) -> bool:
     return any(p.suffix.lower() not in _CODE_EXTENSIONS for p in changed_paths)
 
 
-def watch(watch_path: Path, debounce: float = 3.0) -> None:
+def watch(watch_path: Path, debounce: float = 3.0, out_dir: str | None = None) -> None:
     """
     Watch watch_path for new or modified files and auto-update the graph.
 
@@ -192,8 +210,11 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
     For doc/paper/image changes: writes a needs_update flag and notifies the user
     to run /graphify --update (LLM extraction required).
 
-    debounce: seconds to wait after the last change before triggering (avoids
-    running on every keystroke when many files are saved at once).
+    Args:
+        watch_path: Path to watch
+        debounce: seconds to wait after the last change before triggering (avoids
+            running on every keystroke when many files are saved at once)
+        out_dir: Output directory (default: from GRAPHIFY_OUT env var or "graphify-out")
     """
     try:
         from watchdog.observers import Observer
@@ -202,6 +223,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
     except ImportError as e:
         raise ImportError("watchdog not installed. Run: pip install watchdog") from e
 
+    effective_out = out_dir if out_dir else _GRAPHIFY_OUT
     last_trigger: float = 0.0
     pending: bool = False
     changed: set[Path] = set()
@@ -216,7 +238,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
                 return
             if any(part.startswith(".") for part in path.parts):
                 return
-            if _GRAPHIFY_OUT in path.parts:
+            if effective_out in path.parts:
                 return
             last_trigger = time.monotonic()
             pending = True
@@ -242,9 +264,9 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
                 changed.clear()
                 print(f"\n[graphify watch] {len(batch)} file(s) changed")
                 if _has_non_code(batch):
-                    _notify_only(watch_path)
+                    _notify_only(watch_path, out_dir=effective_out)
                 else:
-                    _rebuild_code(watch_path)
+                    _rebuild_code(watch_path, out_dir=effective_out)
     except KeyboardInterrupt:
         print("\n[graphify watch] Stopped.")
     finally:
