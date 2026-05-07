@@ -16,6 +16,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
+/graphify <path> --output <dir>                       # write graph output to custom directory (default: graphify-out)
 /graphify <path> --mode deep                          # thorough extraction, richer INFERRED edges
 /graphify <path> --update                             # incremental - re-extract only new/changed files
 /graphify <path> --directed                            # build directed graph (preserves edge direction: source→target)
@@ -62,6 +63,14 @@ If no path was given, use `.` (current directory). Do not ask the user for a pat
 
 If the path argument starts with `https://github.com/` or `http://github.com/`, treat it as a GitHub URL — run Step 0 before anything else, then continue with the resolved local path.
 
+**Parse the --output flag:** If the user provided `--output <dir>` or `--output=<dir>`, extract the directory path and use it as OUTPUT_DIR. Otherwise, set OUTPUT_DIR to `graphify-out`. Then export it as an environment variable so all Python modules pick it up:
+
+```bash
+export GRAPHIFY_OUT="OUTPUT_DIR"
+```
+
+Replace OUTPUT_DIR with the actual value throughout all subsequent steps. **Important:** In all bash commands below, replace any hardcoded `graphify-out` references with `$GRAPHIFY_OUT` to respect the custom output directory. The Python modules will automatically use the GRAPHIFY_OUT environment variable.
+
 Follow these steps in order. Do not skip steps.
 
 ### Step 0 - Clone GitHub repo(s) (only if a GitHub URL was given)
@@ -90,6 +99,15 @@ Graphify clones into `~/.graphify/repos/<owner>/<repo>` and reuses existing clon
 ### Step 1 - Ensure graphify is installed
 
 ```bash
+# Parse --output flag from user's command and set OUTPUT_DIR
+# If user provided: /graphify <path> --output my-docs
+# Then set: export GRAPHIFY_OUT="my-docs"
+# Otherwise: export GRAPHIFY_OUT="graphify-out"
+# Parse from sys.argv or command args - extract the value after --output or --output=value
+OUTPUT_DIR="graphify-out"
+# Replace OUTPUT_DIR above with the actual parsed value if --output was provided
+export GRAPHIFY_OUT="$OUTPUT_DIR"
+
 # Detect the correct Python interpreter (handles uv tool, pipx, venv, system installs)
 PYTHON=""
 GRAPHIFY_BIN=$(which graphify 2>/dev/null)
@@ -110,26 +128,26 @@ fi
 if [ -z "$PYTHON" ]; then PYTHON="python3"; fi
 "$PYTHON" -c "import graphify" 2>/dev/null || "$PYTHON" -m pip install graphifyy -q 2>/dev/null || "$PYTHON" -m pip install graphifyy -q --break-system-packages 2>&1 | tail -3
 # Write interpreter path for all subsequent steps (persists across invocations)
-mkdir -p graphify-out
-"$PYTHON" -c "import sys; open('graphify-out/.graphify_python', 'w').write(sys.executable)"
+mkdir -p "$GRAPHIFY_OUT"
+"$PYTHON" -c "import sys; open('$GRAPHIFY_OUT/.graphify_python', 'w').write(sys.executable)"
 # Save scan root so `graphify update` (no args) knows where to look next time
-echo "$(cd INPUT_PATH && pwd)" > graphify-out/.graphify_root
+echo "$(cd INPUT_PATH && pwd)" > "$GRAPHIFY_OUT/.graphify_root"
 ```
 
 If the import succeeds, print nothing and move straight to Step 2.
 
-**In every subsequent bash block, replace `python3` with `$(cat graphify-out/.graphify_python)` to use the correct interpreter.**
+**In every subsequent bash block, replace `python3` with `$(cat $GRAPHIFY_OUT/.graphify_python)` to use the correct interpreter.**
 
 ### Step 2 - Detect files
 
 ```bash
-$(cat graphify-out/.graphify_python) -c "
+$(cat $GRAPHIFY_OUT/.graphify_python) -c "
 import json
 from graphify.detect import detect
 from pathlib import Path
 result = detect(Path('INPUT_PATH'))
 print(json.dumps(result))
-" > graphify-out/.graphify_detect.json
+" > "$GRAPHIFY_OUT/.graphify_detect.json"
 ```
 
 Replace INPUT_PATH with the actual path the user provided. Do NOT cat or print the JSON - read it silently and present a clean summary instead:

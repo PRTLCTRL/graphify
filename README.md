@@ -141,6 +141,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 ```bash
 /graphify .                        # build graph for current folder
 /graphify ./docs --update          # re-extract only changed files
+/graphify . --output docs/graph    # write output to custom directory
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
@@ -154,6 +155,9 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 
 graphify hook install              # auto-rebuild on git commit
 graphify merge-graphs a.json b.json              # combine two graphs
+
+# Custom output directory (alternative to --output flag):
+GRAPHIFY_OUT=docs/graph /graphify .              # via environment variable
 ```
 
 See the [full command reference](#full-command-reference) below.
