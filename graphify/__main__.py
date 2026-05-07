@@ -14,8 +14,9 @@ try:
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
-# Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
+# Output directory — override with GRAPHIFY_OUT env var or --out CLI flag for worktrees
+# or shared-output setups. Accepts a relative name ("graphify-out-feature") or an
+# absolute path ("/shared/graphify-out").
 _GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
 
@@ -1043,6 +1044,28 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    global _GRAPHIFY_OUT
+    
+    # Parse --out flag early and set environment variable for all subsequent operations
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] == "--out" and i + 1 < len(args):
+            output_dir = args[i + 1]
+            os.environ["GRAPHIFY_OUT"] = output_dir
+            _GRAPHIFY_OUT = output_dir
+            # Remove --out and its value from argv so it doesn't interfere with other parsing
+            sys.argv.remove("--out")
+            sys.argv.remove(output_dir)
+            break
+        elif args[i].startswith("--out="):
+            output_dir = args[i].split("=", 1)[1]
+            os.environ["GRAPHIFY_OUT"] = output_dir
+            _GRAPHIFY_OUT = output_dir
+            sys.argv.remove(args[i])
+            break
+        i += 1
+    
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1074,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--out <directory>]")
+        print()
+        print("Global options:")
+        print("  --out <directory>       custom output directory (default: graphify-out)")
+        print("                          can be relative or absolute; also set via GRAPHIFY_OUT env var")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
