@@ -144,6 +144,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
+/graphify . --output docs/graph    # write output to custom directory
 
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
@@ -155,6 +156,19 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 graphify hook install              # auto-rebuild on git commit
 graphify merge-graphs a.json b.json              # combine two graphs
 ```
+
+## Custom output directories
+
+By default, graphify writes to `graphify-out/`. You can customize this in three ways:
+
+1. **Environment variable**: `export GRAPHIFY_OUT=docs/graph`
+2. **CLI flag**: `graphify update . --output docs/graph`
+3. **Both** (flag takes precedence): The flag overrides the env var when both are set
+
+This is useful for:
+- Projects with existing documentation directories
+- Monorepos with multiple sub-projects
+- Worktree setups where each branch needs its own graph
 
 See the [full command reference](#full-command-reference) below.
 
