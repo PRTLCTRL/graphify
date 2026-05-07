@@ -14,9 +14,35 @@ try:
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
+# Output directory — override with GRAPHIFY_OUT env var or --output flag for worktrees or shared-output setups.
 # Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
 _GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+
+
+def _resolve_output_dir(args: list[str], default: str | None = None) -> str:
+    """Extract --output / --out flag from args, falling back to env var or default.
+    
+    Returns the output directory path and does NOT modify the args list.
+    Priority: --output flag > GRAPHIFY_OUT env var > provided default > "graphify-out"
+    """
+    if default is None:
+        default = _GRAPHIFY_OUT
+    
+    output_dir = default
+    i = 0
+    while i < len(args):
+        if args[i] in ("--output", "--out") and i + 1 < len(args):
+            output_dir = args[i + 1]
+            break
+        elif args[i].startswith("--output="):
+            output_dir = args[i].split("=", 1)[1]
+            break
+        elif args[i].startswith("--out="):
+            output_dir = args[i].split("=", 1)[1]
+            break
+        i += 1
+    
+    return output_dir
 
 
 def _check_skill_version(skill_dst: Path) -> None:
@@ -1069,10 +1095,13 @@ def main() -> None:
         print("    --contributor \"Name\"    tag who added it to the corpus")
         print("    --dir <path>            target directory (default: ./raw)")
         print("  watch <path>            watch a folder and rebuild the graph on code changes")
+        print("    --output DIR            output directory (default: graphify-out or GRAPHIFY_OUT env var)")
         print("  update <path>           re-extract code files and update the graph (no LLM needed)")
+        print("    --output DIR            output directory (default: graphify-out or GRAPHIFY_OUT env var)")
         print("    --force                 overwrite graph.json even if the rebuild has fewer nodes")
         print("                            (also: GRAPHIFY_FORCE=1 env var; use after refactors that delete code)")
         print("  cluster-only <path>     rerun clustering on an existing graph.json and regenerate report")
+        print("    --output DIR            output directory (default: graphify-out or GRAPHIFY_OUT env var)")
         print("    --no-viz                skip graph.html generation (useful for >5000 node graphs / CI)")
         print("  query \"<question>\"       BFS traversal of graph.json for a question")
         print("    --dfs                   use depth-first instead of breadth-first")
@@ -1086,8 +1115,10 @@ def main() -> None:
         print("    --nodes N1 N2 ...       source node labels cited in the answer")
         print("    --memory-dir DIR        memory directory (default: graphify-out/memory)")
         print("  check-update <path>     check needs_update flag and notify if semantic re-extraction is pending (cron-safe)")
+        print("    --output DIR            output directory (default: graphify-out or GRAPHIFY_OUT env var)")
         print("  tree                    emit a D3 v7 collapsible-tree HTML for graph.json")
-        print("    --graph PATH            path to graph.json (default graphify-out/graph.json)")
+        print("    --graph PATH            path to graph.json (default {output_dir}/graph.json)")
+        print("    --output DIR            output directory for finding graph.json (default: graphify-out or GRAPHIFY_OUT env var)")
         print("    --output HTML           output path (default graphify-out/GRAPH_TREE.html)")
         print("    --root PATH             filesystem root for the hierarchy")
         print("    --max-children N        cap children per node (default 200)")
@@ -1481,9 +1512,10 @@ def main() -> None:
         if not watch_path.exists():
             print(f"error: path not found: {watch_path}", file=sys.stderr)
             sys.exit(1)
+        output_dir = _resolve_output_dir(sys.argv[2:])
         from graphify.watch import watch as _watch
         try:
-            _watch(watch_path)
+            _watch(watch_path, output_dir=output_dir)
         except ImportError as exc:
             print(f"error: {exc}", file=sys.stderr)
             sys.exit(1)
@@ -1493,7 +1525,8 @@ def main() -> None:
         no_viz = "--no-viz" in sys.argv
         _min_cs_arg = next((a for a in sys.argv if a.startswith("--min-community-size=")), None)
         min_community_size = int(_min_cs_arg.split("=")[1]) if _min_cs_arg else 3
-        graph_json = watch_path / "graphify-out" / "graph.json"
+        output_dir = _resolve_output_dir(sys.argv[2:])
+        graph_json = watch_path / output_dir / "graph.json"
         if not graph_json.exists():
             print(f"error: no graph found at {graph_json} — run /graphify first", file=sys.stderr)
             sys.exit(1)
@@ -1520,7 +1553,7 @@ def main() -> None:
                           {"warning": "cluster-only mode — file stats not available"},
                           tokens, str(watch_path), suggested_questions=questions,
                           min_community_size=min_community_size)
-        out = watch_path / "graphify-out"
+        out = watch_path / output_dir
         (out / "GRAPH_REPORT.md").write_text(report, encoding="utf-8")
         to_json(G, communities, str(out / "graph.json"))
 
@@ -1549,11 +1582,14 @@ def main() -> None:
         if "--force" in argv[2:]:
             force = True
             argv = [a for a in argv if a != "--force"]
+        
+        output_dir = _resolve_output_dir(argv[2:])
+        
         if len(argv) > 2:
             watch_path = Path(argv[2])
         else:
             # Try to recover the scan root saved by the last full build
-            saved = Path(_GRAPHIFY_OUT) / ".graphify_root"
+            saved = Path(output_dir) / ".graphify_root"
             if saved.exists():
                 watch_path = Path(saved.read_text(encoding="utf-8").strip())
             else:
@@ -1563,7 +1599,7 @@ def main() -> None:
             sys.exit(1)
         from graphify.watch import _rebuild_code
         print(f"Re-extracting code files in {watch_path} (no LLM needed)...")
-        ok = _rebuild_code(watch_path, force=force)
+        ok = _rebuild_code(watch_path, force=force, output_dir=output_dir)
         if ok:
             print("Code graph updated. For doc/paper/image changes run /graphify --update in your AI assistant.")
             if not os.environ.get("MOONSHOT_API_KEY") and not os.environ.get("GRAPHIFY_NO_TIPS"):
@@ -1579,10 +1615,11 @@ def main() -> None:
         sys.exit(0)
     elif cmd == "check-update":
         if len(sys.argv) < 3:
-            print("Usage: graphify check-update <path>", file=sys.stderr)
+            print("Usage: graphify check-update <path> [--output DIR]", file=sys.stderr)
             sys.exit(1)
+        output_dir = _resolve_output_dir(sys.argv[2:])
         from graphify.watch import check_update
-        check_update(Path(sys.argv[2]).resolve())
+        check_update(Path(sys.argv[2]).resolve(), output_dir=output_dir)
         sys.exit(0)
     elif cmd == "tree":
         # Emit a D3 v7 collapsible-tree HTML view of graph.json:
@@ -1592,7 +1629,9 @@ def main() -> None:
         # showing top-K outbound edges per symbol.
         from typing import Optional as _Opt
         from graphify.tree_html import write_tree_html, DEFAULT_MAX_CHILDREN
-        graph_path = Path(_GRAPHIFY_OUT) / "graph.json"
+        
+        output_dir = _resolve_output_dir(sys.argv[2:])
+        graph_path = Path(output_dir) / "graph.json"
         output_path: "_Opt[Path]" = None
         root: "_Opt[str]" = None
         max_children = DEFAULT_MAX_CHILDREN
@@ -1644,11 +1683,16 @@ def main() -> None:
         # graphify merge-graphs graph1.json graph2.json ... --out merged.json
         args = sys.argv[2:]
         graph_paths: list[Path] = []
-        out_path = Path(_GRAPHIFY_OUT) / "merged-graph.json"
+        output_dir = _resolve_output_dir(args)
+        out_path = Path(output_dir) / "merged-graph.json"
         i = 0
         while i < len(args):
-            if args[i] == "--out" and i + 1 < len(args):
+            if args[i] in ("--out", "--output") and i + 1 < len(args):
                 out_path = Path(args[i + 1]); i += 2
+            elif args[i].startswith("--out="):
+                out_path = Path(args[i].split("=", 1)[1]); i += 1
+            elif args[i].startswith("--output="):
+                out_path = Path(args[i].split("=", 1)[1]); i += 1
             else:
                 graph_paths.append(Path(args[i])); i += 1
         if len(graph_paths) < 2:
