@@ -14,9 +14,43 @@ try:
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
+# Output directory — override with GRAPHIFY_OUT env var or --out CLI flag.
 # Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
 _GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+
+
+def _parse_output_dir(argv: list[str]) -> tuple[str, list[str]]:
+    """Parse --out or --output-dir from argv and return (output_dir, remaining_args).
+    
+    If the flag is found, also sets GRAPHIFY_OUT environment variable so all
+    modules (cache.py, watch.py) see the same output directory.
+    """
+    output_dir = _GRAPHIFY_OUT
+    remaining = []
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg in ("--out", "--output-dir"):
+            if i + 1 < len(argv):
+                output_dir = argv[i + 1]
+                i += 2
+            else:
+                print(f"error: {arg} requires a value", file=sys.stderr)
+                sys.exit(1)
+        elif arg.startswith("--out="):
+            output_dir = arg.split("=", 1)[1]
+            i += 1
+        elif arg.startswith("--output-dir="):
+            output_dir = arg.split("=", 1)[1]
+            i += 1
+        else:
+            remaining.append(arg)
+            i += 1
+    
+    if output_dir != _GRAPHIFY_OUT:
+        os.environ["GRAPHIFY_OUT"] = output_dir
+    
+    return output_dir, remaining
 
 
 def _check_skill_version(skill_dst: Path) -> None:
@@ -1043,6 +1077,14 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Parse --out / --output-dir flag early so it's available to all commands
+    global _GRAPHIFY_OUT
+    output_dir, remaining_argv = _parse_output_dir(sys.argv[1:])
+    _GRAPHIFY_OUT = output_dir
+    
+    # Reconstruct sys.argv with program name + remaining args
+    sys.argv = [sys.argv[0]] + remaining_argv
+    
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1093,13 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--out DIR]")
+        print()
+        print("Global Options:")
+        print("  --out DIR, --output-dir DIR")
+        print("                          Specify output directory (default: graphify-out)")
+        print("                          Can be relative or absolute path")
+        print("                          Alternatively set GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
