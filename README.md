@@ -140,6 +140,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 
 ```bash
 /graphify .                        # build graph for current folder
+/graphify . --out docs/graph       # use custom output directory (default: graphify-out)
 /graphify ./docs --update          # re-extract only changed files
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
@@ -231,6 +232,7 @@ The MCP server gives your assistant structured access: `query_graph`, `get_node`
 ```
 /graphify                          # run on current directory
 /graphify ./raw                    # run on a specific folder
+/graphify ./raw --out docs/graph   # use custom output directory (default: graphify-out)
 /graphify ./raw --mode deep        # more aggressive relationship extraction
 /graphify ./raw --update           # re-extract only changed files
 /graphify ./raw --directed         # preserve edge direction

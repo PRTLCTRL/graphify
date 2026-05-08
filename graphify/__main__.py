@@ -14,9 +14,20 @@ try:
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
+# Output directory — override with GRAPHIFY_OUT env var or --out flag for worktrees or shared-output setups.
 # Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
 _GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+
+
+def _set_output_directory(out_path: str | None) -> None:
+    """Set the output directory globally by updating the environment variable.
+    
+    This affects the current process and any subprocesses spawned by graphify.
+    """
+    global _GRAPHIFY_OUT
+    if out_path:
+        _GRAPHIFY_OUT = out_path
+        os.environ["GRAPHIFY_OUT"] = out_path
 
 
 def _check_skill_version(skill_dst: Path) -> None:
@@ -1050,8 +1061,35 @@ def main() -> None:
         for skill_dst in {Path.home() / cfg["skill_dst"] for cfg in _PLATFORM_CONFIG.values()}:
             _check_skill_version(skill_dst)
 
+    # Parse global --out option before processing commands
+    output_dir = None
+    args = sys.argv[1:]
+    filtered_args = []
+    i = 0
+    while i < len(args):
+        if args[i] == "--out" and i + 1 < len(args):
+            output_dir = args[i + 1]
+            i += 2
+        elif args[i].startswith("--out="):
+            output_dir = args[i].split("=", 1)[1]
+            i += 1
+        else:
+            filtered_args.append(args[i])
+            i += 1
+    
+    # Apply output directory if specified
+    if output_dir:
+        _set_output_directory(output_dir)
+    
+    # Rebuild argv with filtered args (without --out)
+    sys.argv = [sys.argv[0]] + filtered_args
+
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [options]")
+        print()
+        print("Global Options:")
+        print("  --out <dir>             specify output directory (default: graphify-out)")
+        print("                          can also set GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
