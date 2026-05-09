@@ -14,8 +14,9 @@ try:
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
+# Output directory — override with --out flag or GRAPHIFY_OUT env var for worktrees or shared-output setups.
 # Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
+# CLI --out flag takes precedence over GRAPHIFY_OUT env var.
 _GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
 
@@ -1043,6 +1044,21 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    global _GRAPHIFY_OUT
+    
+    # Check for --out flag early and update output directory
+    # Format: graphify [--out DIR] <command> [args...]
+    if "--out" in sys.argv:
+        idx = sys.argv.index("--out")
+        if idx + 1 < len(sys.argv):
+            custom_out = sys.argv[idx + 1]
+            # Override both the module variable and env var so all code sees it
+            _GRAPHIFY_OUT = custom_out
+            os.environ["GRAPHIFY_OUT"] = custom_out
+            # Remove --out and its argument from argv so command parsing works
+            sys.argv.pop(idx)  # remove --out
+            sys.argv.pop(idx)  # remove the directory argument
+    
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1067,10 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--out DIR] <command>")
+        print()
+        print("Global options:")
+        print("  --out DIR                   output directory (default: graphify-out)")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
