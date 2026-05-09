@@ -54,6 +54,21 @@ uv tool install graphifyy && graphify install
 
 > **`graphify: command not found`?** Use `uv tool install graphifyy` or `pipx install graphifyy` — both put the CLI on PATH automatically. With plain `pip`, add `~/.local/bin` (Linux) or `~/Library/Python/3.x/bin` (Mac) to your PATH, or run `python -m graphify`.
 
+### Custom output directory
+
+By default, graphify writes all outputs to `graphify-out/`. You can specify a custom directory:
+
+```bash
+# Using --out flag
+graphify --out my-custom-dir .
+
+# Or using environment variable
+export GRAPHIFY_OUT=my-custom-dir
+graphify .
+```
+
+The `--out` flag takes precedence over the `GRAPHIFY_OUT` environment variable.
+
 ### Pick your platform
 
 | Platform | Install command |
