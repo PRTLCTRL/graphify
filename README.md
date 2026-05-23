@@ -178,6 +178,42 @@ dist/
 
 ---
 
+## Custom output directory
+
+By default, graphify writes all output to `graphify-out/` in the directory you run it from. You can customize this location using the `GRAPHIFY_OUT` environment variable:
+
+```bash
+# Write output to a custom directory
+export GRAPHIFY_OUT=docs/knowledge-graph
+/graphify .
+
+# Or inline for a single run
+GRAPHIFY_OUT=docs/kg /graphify .
+
+# Absolute paths work too
+export GRAPHIFY_OUT=/shared/project-graph
+/graphify ./src
+```
+
+The environment variable is respected by all graphify commands:
+
+```bash
+export GRAPHIFY_OUT=custom-dir
+graphify update ./src           # updates custom-dir/graph.json
+graphify cluster-only .         # rewrites custom-dir/GRAPH_REPORT.md
+graphify query "auth flow"      # queries custom-dir/graph.json
+```
+
+This is useful for:
+- **Documentation directories** — output directly to `docs/architecture` instead of symlinking
+- **Monorepos** — separate graphs per package: `GRAPHIFY_OUT=packages/api/graph-out`
+- **Git worktrees** — each worktree can have its own graph without conflicts
+- **CI/CD** — write to a build artifact directory
+
+> **Note:** The Python CLI already respects `GRAPHIFY_OUT`. If you're using the `/graphify` skill in an AI assistant, set the environment variable before invoking the skill.
+
+---
+
 ## Team setup
 
 `graphify-out/` is meant to be committed to git so everyone on the team starts with a map.
