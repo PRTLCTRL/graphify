@@ -39,6 +39,10 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 /graphify query "<question>" --budget 1500            # cap answer at N tokens
 /graphify path "AuthModule" "Database"                # shortest path between two concepts
 /graphify explain "SwinTransformer"                   # plain-language explanation of a node
+
+# Custom output directory (default: graphify-out/)
+GRAPHIFY_OUT=docs/knowledge-graph /graphify .         # set via env var
+graphify --out docs/knowledge-graph update .          # set via CLI flag (for CLI commands)
 ```
 
 ## What graphify is for

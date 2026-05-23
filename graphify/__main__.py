@@ -1043,6 +1043,26 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    global _GRAPHIFY_OUT
+    
+    # Parse global --out flag before processing commands
+    args = list(sys.argv)
+    i = 1
+    while i < len(args):
+        if args[i] == "--out" and i + 1 < len(args):
+            _GRAPHIFY_OUT = args[i + 1]
+            os.environ["GRAPHIFY_OUT"] = _GRAPHIFY_OUT
+            # Remove --out and its argument from argv so command parsing doesn't see it
+            args.pop(i)
+            args.pop(i)
+        elif args[i].startswith("--out="):
+            _GRAPHIFY_OUT = args[i].split("=", 1)[1]
+            os.environ["GRAPHIFY_OUT"] = _GRAPHIFY_OUT
+            args.pop(i)
+        else:
+            i += 1
+    sys.argv = args
+    
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.

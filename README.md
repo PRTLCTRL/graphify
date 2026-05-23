@@ -160,6 +160,30 @@ See the [full command reference](#full-command-reference) below.
 
 ---
 
+## Custom output directory
+
+By default, graphify writes to `graphify-out/`. To use a different directory:
+
+**Using environment variable:**
+```bash
+export GRAPHIFY_OUT="docs/knowledge-graph"
+/graphify .
+```
+
+**Using CLI flag:**
+```bash
+graphify --out docs/knowledge-graph update .
+graphify --out /shared/graphs query "authentication flow"
+```
+
+**For AI assistant workflows**, set `GRAPHIFY_OUT` in your shell profile (`.bashrc`, `.zshrc`, etc.) or project-specific `.envrc` (if using direnv).
+
+The output directory accepts:
+- Relative paths: `docs/graph`, `graphify-out-feature`
+- Absolute paths: `/shared/graphs`, `/tmp/graphify-out`
+
+---
+
 ## Ignoring files
 
 Create a `.graphifyignore` in your project root — same syntax as `.gitignore`, including `!` negation:
