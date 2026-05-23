@@ -154,6 +154,10 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 
 graphify hook install              # auto-rebuild on git commit
 graphify merge-graphs a.json b.json              # combine two graphs
+
+# Specify custom output directory (default: graphify-out)
+graphify --output-dir docs/graphs merge-graphs a.json b.json
+GRAPHIFY_OUT=my-graphs graphify update .         # or use environment variable
 ```
 
 See the [full command reference](#full-command-reference) below.
@@ -188,6 +192,21 @@ graphify-out/manifest.json    # mtime-based, breaks after git clone
 graphify-out/cost.json        # local only
 # graphify-out/cache/         # optional: commit for speed, skip to keep repo small
 ```
+
+**Custom output directories:**
+
+If your project has an existing documentation structure, you can direct graphify's output to a specific directory:
+
+```bash
+# Using --output-dir flag
+graphify --output-dir docs/knowledge-graph query "architecture overview"
+
+# Using environment variable (useful for CI/CD)
+export GRAPHIFY_OUT=docs/graph
+graphify update .
+```
+
+The output directory can be relative (e.g., `docs/graph`) or absolute (e.g., `/shared/project-graphs`).
 
 **Workflow:**
 1. One person runs `/graphify .` and commits `graphify-out/`.

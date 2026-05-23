@@ -14,9 +14,11 @@ try:
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
+# Output directory — override with GRAPHIFY_OUT env var or --output-dir flag.
 # Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
-_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+def _get_output_dir() -> str:
+    """Get the current output directory from environment or default."""
+    return os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
 
 def _check_skill_version(skill_dst: Path) -> None:
@@ -1050,8 +1052,32 @@ def main() -> None:
         for skill_dst in {Path.home() / cfg["skill_dst"] for cfg in _PLATFORM_CONFIG.values()}:
             _check_skill_version(skill_dst)
 
+    # Parse global --output-dir flag if present (before command)
+    output_dir_override = None
+    filtered_argv = []
+    skip_next = False
+    for i, arg in enumerate(sys.argv):
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--output-dir" and i + 1 < len(sys.argv):
+            output_dir_override = sys.argv[i + 1]
+            skip_next = True
+        elif arg.startswith("--output-dir="):
+            output_dir_override = arg.split("=", 1)[1]
+        else:
+            filtered_argv.append(arg)
+    
+    # Set GRAPHIFY_OUT env var so all downstream code uses the custom directory
+    if output_dir_override:
+        os.environ["GRAPHIFY_OUT"] = output_dir_override
+        sys.argv = filtered_argv
+
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--output-dir DIR] <command>")
+        print()
+        print("Global options:")
+        print("  --output-dir DIR        specify output directory (default: graphify-out or GRAPHIFY_OUT env var)")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
@@ -1553,7 +1579,8 @@ def main() -> None:
             watch_path = Path(argv[2])
         else:
             # Try to recover the scan root saved by the last full build
-            saved = Path(_GRAPHIFY_OUT) / ".graphify_root"
+            output_dir = _get_output_dir()
+            saved = Path(output_dir) / ".graphify_root"
             if saved.exists():
                 watch_path = Path(saved.read_text(encoding="utf-8").strip())
             else:
@@ -1592,7 +1619,8 @@ def main() -> None:
         # showing top-K outbound edges per symbol.
         from typing import Optional as _Opt
         from graphify.tree_html import write_tree_html, DEFAULT_MAX_CHILDREN
-        graph_path = Path(_GRAPHIFY_OUT) / "graph.json"
+        output_dir = _get_output_dir()
+        graph_path = Path(output_dir) / "graph.json"
         output_path: "_Opt[Path]" = None
         root: "_Opt[str]" = None
         max_children = DEFAULT_MAX_CHILDREN
@@ -1644,7 +1672,8 @@ def main() -> None:
         # graphify merge-graphs graph1.json graph2.json ... --out merged.json
         args = sys.argv[2:]
         graph_paths: list[Path] = []
-        out_path = Path(_GRAPHIFY_OUT) / "merged-graph.json"
+        output_dir = _get_output_dir()
+        out_path = Path(output_dir) / "merged-graph.json"
         i = 0
         while i < len(args):
             if args[i] == "--out" and i + 1 < len(args):
