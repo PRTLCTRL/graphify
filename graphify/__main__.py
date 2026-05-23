@@ -1043,6 +1043,29 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Parse --output flag early and update environment before any modules read _GRAPHIFY_OUT
+    output_dir = None
+    cleaned_argv = [sys.argv[0]]
+    i = 1
+    while i < len(sys.argv):
+        if sys.argv[i] == "--output" and i + 1 < len(sys.argv):
+            output_dir = sys.argv[i + 1]
+            i += 2  # Skip both --output and its value
+        elif sys.argv[i].startswith("--output="):
+            output_dir = sys.argv[i].split("=", 1)[1]
+            i += 1
+        else:
+            cleaned_argv.append(sys.argv[i])
+            i += 1
+    
+    if output_dir:
+        os.environ["GRAPHIFY_OUT"] = output_dir
+        sys.argv = cleaned_argv
+
+    # Re-read _GRAPHIFY_OUT after potentially setting the env var
+    global _GRAPHIFY_OUT
+    _GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1074,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--output DIR]")
+        print()
+        print("Global Options:")
+        print("  --output DIR            set output directory (default: graphify-out)")
+        print("                          can also set GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")

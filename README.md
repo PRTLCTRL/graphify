@@ -140,6 +140,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 
 ```bash
 /graphify .                        # build graph for current folder
+/graphify . --output docs/graph    # save to custom directory instead of graphify-out
 /graphify ./docs --update          # re-extract only changed files
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON

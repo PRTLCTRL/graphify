@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                                             # full pipeline on current directory → Obsidian vault
 /graphify <path>                                      # full pipeline on specific path
+/graphify <path> --output custom-docs/graph          # save output to custom directory instead of graphify-out
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
