@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import html
+import os
 import re
 import urllib.error
 import urllib.parse
@@ -15,6 +16,7 @@ import socket
 _ALLOWED_SCHEMES = {"http", "https"}
 _MAX_FETCH_BYTES = 52_428_800   # 50 MB hard cap for binary downloads
 _MAX_TEXT_BYTES  = 10_485_760   # 10 MB hard cap for HTML / text
+_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
 # AWS metadata, link-local, and common cloud metadata endpoints
 _BLOCKED_HOSTS = {"metadata.google.internal", "metadata.google.com"}
@@ -188,12 +190,13 @@ def validate_graph_path(path: str | Path, base: Path | None = None) -> Path:
     """
     if base is None:
         resolved_hint = Path(path).resolve()
+        graphify_out_name = Path(_GRAPHIFY_OUT).name
         for candidate in [resolved_hint, *resolved_hint.parents]:
-            if candidate.name == "graphify-out":
+            if candidate.name == graphify_out_name:
                 base = candidate
                 break
         if base is None:
-            base = Path("graphify-out").resolve()
+            base = Path(_GRAPHIFY_OUT).resolve()
 
     base = base.resolve()
     if not base.exists():

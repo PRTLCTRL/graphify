@@ -664,29 +664,30 @@ def _cursor_uninstall(project_dir: Path) -> None:
 
 # OpenCode tool.execute.before plugin — fires before every tool call.
 # Injects a graph reminder into bash command output when graph.json exists.
-_OPENCODE_PLUGIN_JS = """\
+def _opencode_plugin_js(graphify_out: str = "graphify-out") -> str:
+    return f"""\
 // graphify OpenCode plugin
 // Injects a knowledge graph reminder before bash tool calls when the graph exists.
-import { existsSync } from "fs";
-import { join } from "path";
+import {{ existsSync }} from "fs";
+import {{ join }} from "path";
 
-export const GraphifyPlugin = async ({ directory }) => {
+export const GraphifyPlugin = async ({{ directory }}) => {{
   let reminded = false;
 
-  return {
-    "tool.execute.before": async (input, output) => {
+  return {{
+    "tool.execute.before": async (input, output) => {{
       if (reminded) return;
-      if (!existsSync(join(directory, "graphify-out", "graph.json"))) return;
+      if (!existsSync(join(directory, "{graphify_out}", "graph.json"))) return;
 
-      if (input.tool === "bash") {
+      if (input.tool === "bash") {{
         output.args.command =
-          'echo "[graphify] Knowledge graph available. Read graphify-out/GRAPH_REPORT.md for god nodes and architecture context before searching files." && ' +
+          'echo "[graphify] Knowledge graph available. Read {graphify_out}/GRAPH_REPORT.md for god nodes and architecture context before searching files." && ' +
           output.args.command;
         reminded = true;
-      }
-    },
-  };
-};
+      }}
+    }},
+  }};
+}};
 """
 
 _OPENCODE_PLUGIN_PATH = Path(".opencode") / "plugins" / "graphify.js"
@@ -697,7 +698,7 @@ def _install_opencode_plugin(project_dir: Path) -> None:
     """Write graphify.js plugin and register it in opencode.json."""
     plugin_file = project_dir / _OPENCODE_PLUGIN_PATH
     plugin_file.parent.mkdir(parents=True, exist_ok=True)
-    plugin_file.write_text(_OPENCODE_PLUGIN_JS, encoding="utf-8")
+    plugin_file.write_text(_opencode_plugin_js(_GRAPHIFY_OUT), encoding="utf-8")
     print(f"  {_OPENCODE_PLUGIN_PATH}  ->  tool.execute.before hook written")
 
     config_file = project_dir / _OPENCODE_CONFIG_PATH
@@ -1043,6 +1044,28 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Parse global --output-dir flag before anything else so it propagates to all modules
+    output_dir = None
+    filtered_argv = []
+    i = 0
+    while i < len(sys.argv):
+        if sys.argv[i] == "--output-dir" and i + 1 < len(sys.argv):
+            output_dir = sys.argv[i + 1]
+            i += 2
+        elif sys.argv[i].startswith("--output-dir="):
+            output_dir = sys.argv[i].split("=", 1)[1]
+            i += 1
+        else:
+            filtered_argv.append(sys.argv[i])
+            i += 1
+    
+    # Set environment variable before modules read it
+    if output_dir:
+        os.environ["GRAPHIFY_OUT"] = output_dir
+    
+    # Restore sys.argv without the --output-dir flag
+    sys.argv = filtered_argv
+    
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1074,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--output-dir PATH]")
+        print()
+        print("Global options:")
+        print("  --output-dir PATH       output directory for graph artifacts (default: graphify-out)")
+        print("                          can also be set via GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
