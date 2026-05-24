@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                                             # full pipeline on current directory → Obsidian vault
 /graphify <path>                                      # full pipeline on specific path
+/graphify <path> --output docs/graph                  # specify custom output directory (default: graphify-out)
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
@@ -55,6 +56,14 @@ Use it for:
 - A reading list (papers + tweets + notes → one navigable graph)
 - A research corpus (citation graph + concept graph in one)
 - Your personal /raw folder (drop everything in, let it grow, query it)
+
+## Output Directory
+
+By default, graphify writes to `graphify-out/` in the current directory. You can customize this with:
+- **CLI flag**: `/graphify <path> --output docs/graph` (or `-o docs/graph`)
+- **Environment variable**: `export GRAPHIFY_OUT=docs/graph` (applies to all commands)
+
+Useful for projects with existing documentation structures where you want the graph to live alongside your docs.
 
 ## What You Must Do When Invoked
 

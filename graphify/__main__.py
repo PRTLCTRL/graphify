@@ -8,6 +8,29 @@ import shutil
 import sys
 from pathlib import Path
 
+# Parse --output flag BEFORE any other imports so modules pick up the env var
+_output_dir = None
+_filtered_argv = []
+_i = 0
+while _i < len(sys.argv):
+    if sys.argv[_i] in ("--output", "-o") and _i + 1 < len(sys.argv):
+        _output_dir = sys.argv[_i + 1]
+        _i += 2
+    elif sys.argv[_i].startswith("--output="):
+        _output_dir = sys.argv[_i].split("=", 1)[1]
+        _i += 1
+    elif sys.argv[_i].startswith("-o="):
+        _output_dir = sys.argv[_i].split("=", 1)[1]
+        _i += 1
+    else:
+        _filtered_argv.append(sys.argv[_i])
+        _i += 1
+
+if _output_dir:
+    os.environ["GRAPHIFY_OUT"] = _output_dir
+
+sys.argv = _filtered_argv
+
 try:
     from importlib.metadata import version as _pkg_version
     __version__ = _pkg_version("graphifyy")
@@ -1051,7 +1074,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--output DIR | -o DIR]")
+        print()
+        print("Global options:")
+        print("  --output DIR, -o DIR    specify output directory (default: graphify-out)")
+        print("                          can also be set via GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
