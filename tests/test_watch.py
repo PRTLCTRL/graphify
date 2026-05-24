@@ -1,5 +1,6 @@
 """Tests for watch.py - file watcher helpers (no watchdog required)."""
 import time
+import os
 from pathlib import Path
 import pytest
 
@@ -25,6 +26,24 @@ def test_notify_only_idempotent(tmp_path):
     _notify_only(tmp_path)
     flag = tmp_path / "graphify-out" / "needs_update"
     assert flag.read_text() == "1"
+
+def test_notify_only_respects_custom_output_dir(tmp_path, monkeypatch):
+    """_notify_only should respect GRAPHIFY_OUT environment variable."""
+    custom_dir = "custom-graph-output"
+    monkeypatch.setenv("GRAPHIFY_OUT", custom_dir)
+    # Reload the module to pick up the new env var
+    import importlib
+    import graphify.watch
+    importlib.reload(graphify.watch)
+    
+    graphify.watch._notify_only(tmp_path)
+    flag = tmp_path / custom_dir / "needs_update"
+    assert flag.exists()
+    assert flag.read_text() == "1"
+    
+    # Cleanup: reload with default
+    monkeypatch.delenv("GRAPHIFY_OUT", raising=False)
+    importlib.reload(graphify.watch)
 
 
 # --- _WATCHED_EXTENSIONS ---

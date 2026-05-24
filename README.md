@@ -141,6 +141,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 ```bash
 /graphify .                        # build graph for current folder
 /graphify ./docs --update          # re-extract only changed files
+/graphify . --out docs/knowledge-graph  # write output to docs/knowledge-graph/ instead of graphify-out/
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
@@ -175,6 +176,29 @@ dist/
 !src/
 !src/**
 ```
+
+---
+
+## Custom output directory
+
+By default, graphify writes to `graphify-out/` in your project root. You can customize this in two ways:
+
+**1. Via command flag:**
+```bash
+/graphify . --out docs/graph      # write to docs/graph/ instead
+/graphify . --out /shared/graphs  # use absolute path
+```
+
+**2. Via environment variable:**
+```bash
+export GRAPHIFY_OUT=docs/graph
+/graphify .                       # respects GRAPHIFY_OUT
+```
+
+Use cases:
+- **Documentation folders:** Place graphs alongside your docs (`/graphify . --out docs/knowledge-graph`)
+- **Worktrees:** Keep separate graphs per worktree (`GRAPHIFY_OUT=graphify-out-feature`)
+- **Shared storage:** Centralize graphs across projects (`GRAPHIFY_OUT=/shared/project-graph`)
 
 ---
 
@@ -231,6 +255,7 @@ The MCP server gives your assistant structured access: `query_graph`, `get_node`
 ```
 /graphify                          # run on current directory
 /graphify ./raw                    # run on a specific folder
+/graphify ./raw --out custom-dir   # write output to custom-dir/ instead of graphify-out/
 /graphify ./raw --mode deep        # more aggressive relationship extraction
 /graphify ./raw --update           # re-extract only changed files
 /graphify ./raw --directed         # preserve edge direction
