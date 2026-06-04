@@ -8,6 +8,21 @@ import shutil
 import sys
 from pathlib import Path
 
+# Parse --out option BEFORE any imports that use _GRAPHIFY_OUT
+# This must happen before other graphify modules are imported
+_args = list(sys.argv[1:])
+_i = 0
+while _i < len(_args):
+    if _args[_i] == "--out" and _i + 1 < len(_args):
+        os.environ["GRAPHIFY_OUT"] = _args[_i + 1]
+        del _args[_i:_i + 2]
+    elif _args[_i].startswith("--out="):
+        os.environ["GRAPHIFY_OUT"] = _args[_i].split("=", 1)[1]
+        del _args[_i]
+    else:
+        _i += 1
+sys.argv[1:] = _args
+
 try:
     from importlib.metadata import version as _pkg_version
     __version__ = _pkg_version("graphifyy")
@@ -1051,7 +1066,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--out <dir>] <command>")
+        print()
+        print("Global Options:")
+        print("  --out <dir>             output directory for all graph files (default: graphify-out)")
+        print("                          can also be set via GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
