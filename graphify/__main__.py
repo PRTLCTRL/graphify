@@ -1043,6 +1043,36 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Parse global --output flag before processing commands
+    global _GRAPHIFY_OUT
+    args = list(sys.argv[1:])
+    output_dir = None
+    i = 0
+    while i < len(args):
+        if args[i] in ("--output", "--out", "-o"):
+            if i + 1 < len(args):
+                output_dir = args[i + 1]
+                args.pop(i)
+                args.pop(i)
+            else:
+                print(f"error: {args[i]} requires a directory path", file=sys.stderr)
+                sys.exit(1)
+        elif args[i].startswith("--output="):
+            output_dir = args[i].split("=", 1)[1]
+            args.pop(i)
+        elif args[i].startswith("--out="):
+            output_dir = args[i].split("=", 1)[1]
+            args.pop(i)
+        else:
+            i += 1
+    
+    if output_dir:
+        _GRAPHIFY_OUT = output_dir
+        os.environ["GRAPHIFY_OUT"] = output_dir
+    
+    # Reconstruct sys.argv with the flag removed
+    sys.argv = [sys.argv[0]] + args
+
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1081,12 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--output DIR] <command>")
+        print()
+        print("Global Options:")
+        print("  --output DIR, --out DIR, -o DIR")
+        print("                          specify output directory (default: graphify-out)")
+        print("                          also settable via GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
