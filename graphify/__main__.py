@@ -1043,6 +1043,24 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Parse global --out flag before subcommands to allow custom output directory
+    global _GRAPHIFY_OUT
+    args = list(sys.argv[1:])
+    i = 0
+    while i < len(args):
+        if args[i] == "--out" and i + 1 < len(args):
+            _GRAPHIFY_OUT = args[i + 1]
+            # Remove --out and its value from argv so subcommand parsing doesn't break
+            sys.argv.pop(sys.argv.index("--out"))
+            sys.argv.pop(sys.argv.index(args[i + 1]))
+            i += 2
+        elif args[i].startswith("--out="):
+            _GRAPHIFY_OUT = args[i].split("=", 1)[1]
+            sys.argv.remove(args[i])
+            i += 1
+        else:
+            i += 1
+    
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1069,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--out <dir>] <command>")
+        print()
+        print("Global options:")
+        print("  --out <dir>             output directory (default: graphify-out)")
+        print("                          can also be set via GRAPHIFY_OUT env var")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
@@ -1493,7 +1515,7 @@ def main() -> None:
         no_viz = "--no-viz" in sys.argv
         _min_cs_arg = next((a for a in sys.argv if a.startswith("--min-community-size=")), None)
         min_community_size = int(_min_cs_arg.split("=")[1]) if _min_cs_arg else 3
-        graph_json = watch_path / "graphify-out" / "graph.json"
+        graph_json = watch_path / _GRAPHIFY_OUT / "graph.json"
         if not graph_json.exists():
             print(f"error: no graph found at {graph_json} — run /graphify first", file=sys.stderr)
             sys.exit(1)
@@ -1520,7 +1542,7 @@ def main() -> None:
                           {"warning": "cluster-only mode — file stats not available"},
                           tokens, str(watch_path), suggested_questions=questions,
                           min_community_size=min_community_size)
-        out = watch_path / "graphify-out"
+        out = watch_path / _GRAPHIFY_OUT
         (out / "GRAPH_REPORT.md").write_text(report, encoding="utf-8")
         to_json(G, communities, str(out / "graph.json"))
 
