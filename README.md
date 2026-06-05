@@ -178,6 +178,33 @@ dist/
 
 ---
 
+## Customizing output directory
+
+By default, graphify outputs to `graphify-out/`. You can specify a different directory:
+
+**Using the CLI flag:**
+```bash
+/graphify . --output-dir docs/knowledge-graph
+graphify --output-dir ./graph-data query "what connects X to Y?"
+```
+
+**Using an environment variable:**
+```bash
+export GRAPHIFY_OUT=docs/knowledge-graph
+/graphify .
+```
+
+The output directory can be:
+- A relative path (`docs/graph`, `graphify-out-v2`)
+- An absolute path (`/shared/graphify-out`)
+
+Useful for:
+- **Documentation directories**: Output directly to your docs folder
+- **Git worktrees**: Separate output per worktree (`graphify-out-feature`)
+- **Shared setups**: Multiple projects writing to one knowledge graph
+
+---
+
 ## Team setup
 
 `graphify-out/` is meant to be committed to git so everyone on the team starts with a map.

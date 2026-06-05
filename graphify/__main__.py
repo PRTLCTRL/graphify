@@ -8,13 +8,25 @@ import shutil
 import sys
 from pathlib import Path
 
+# Parse --output-dir flag early, before imports that use GRAPHIFY_OUT
+if "--output-dir" in sys.argv:
+    try:
+        idx = sys.argv.index("--output-dir")
+        if idx + 1 < len(sys.argv):
+            os.environ["GRAPHIFY_OUT"] = sys.argv[idx + 1]
+            # Remove the flag and value from argv so command parsing doesn't see it
+            sys.argv.pop(idx)
+            sys.argv.pop(idx)
+    except (ValueError, IndexError):
+        pass
+
 try:
     from importlib.metadata import version as _pkg_version
     __version__ = _pkg_version("graphifyy")
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
+# Output directory — override with GRAPHIFY_OUT env var or --output-dir flag for worktrees or shared-output setups.
 # Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
 _GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
@@ -1051,7 +1063,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--output-dir DIR] <command>")
+        print()
+        print("Global options:")
+        print("  --output-dir DIR        specify output directory (default: graphify-out)")
+        print("                          can also use GRAPHIFY_OUT env var")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
@@ -1278,7 +1294,7 @@ def main() -> None:
         question = sys.argv[2]
         use_dfs = "--dfs" in sys.argv
         budget = 2000
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         context_filters: list[str] = []
         args = sys.argv[3:]
         i = 0
@@ -1363,7 +1379,7 @@ def main() -> None:
         import networkx as _nx
         source_label = sys.argv[2]
         target_label = sys.argv[3]
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         args = sys.argv[4:]
         for i, a in enumerate(args):
             if a == "--graph" and i + 1 < len(args):
@@ -1411,7 +1427,7 @@ def main() -> None:
         from graphify.serve import _find_node
         from networkx.readwrite import json_graph
         label = sys.argv[2]
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         args = sys.argv[3:]
         for i, a in enumerate(args):
             if a == "--graph" and i + 1 < len(args):

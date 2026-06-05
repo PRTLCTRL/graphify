@@ -13,6 +13,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 ```
 /graphify                                             # full pipeline on current directory → Obsidian vault
 /graphify <path>                                      # full pipeline on specific path
+/graphify <path> --output-dir docs/graph              # specify custom output directory (default: graphify-out)
 /graphify https://github.com/<owner>/<repo>           # clone repo then run full pipeline on it
 /graphify https://github.com/<owner>/<repo> --branch <branch>  # clone a specific branch
 /graphify <url1> <url2> ...                           # clone multiple repos, build each, merge into one cross-repo graph
@@ -40,6 +41,8 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 /graphify path "AuthModule" "Database"                # shortest path between two concepts
 /graphify explain "SwinTransformer"                   # plain-language explanation of a node
 ```
+
+**Note:** You can also use the `GRAPHIFY_OUT` environment variable to set the output directory globally.
 
 ## What graphify is for
 
