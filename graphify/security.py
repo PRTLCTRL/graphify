@@ -178,7 +178,7 @@ def safe_fetch_text(url: str, max_bytes: int = _MAX_TEXT_BYTES, timeout: int = 1
 def validate_graph_path(path: str | Path, base: Path | None = None) -> Path:
     """Resolve *path* and verify it stays inside *base*.
 
-    *base* defaults to the `graphify-out` directory relative to CWD.
+    *base* defaults to the graphify output directory (GRAPHIFY_OUT env var) relative to CWD.
     Also requires the base directory to exist, so a caller cannot
     trick graphify into reading files before any graph has been built.
 
@@ -186,14 +186,15 @@ def validate_graph_path(path: str | Path, base: Path | None = None) -> Path:
         ValueError  - path escapes base, or base does not exist
         FileNotFoundError - resolved path does not exist
     """
+    _graphify_out = os.environ.get("GRAPHIFY_OUT", "graphify-out")
     if base is None:
         resolved_hint = Path(path).resolve()
         for candidate in [resolved_hint, *resolved_hint.parents]:
-            if candidate.name == "graphify-out":
+            if candidate.name == _graphify_out or candidate.name == "graphify-out":
                 base = candidate
                 break
         if base is None:
-            base = Path("graphify-out").resolve()
+            base = Path(_graphify_out).resolve()
 
     base = base.resolve()
     if not base.exists():
@@ -208,7 +209,7 @@ def validate_graph_path(path: str | Path, base: Path | None = None) -> Path:
     except ValueError:
         raise ValueError(
             f"Path {path!r} escapes the allowed directory {base}. "
-            "Only paths inside graphify-out/ are permitted."
+            f"Only paths inside {_graphify_out}/ are permitted."
         )
 
     if not resolved.exists():

@@ -144,6 +144,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
+/graphify . --out docs/graph       # write output to custom directory
 
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
@@ -244,6 +245,7 @@ The MCP server gives your assistant structured access: `query_graph`, `get_node`
 /graphify ./raw --neo4j-push bolt://localhost:7687
 /graphify ./raw --watch            # auto-sync as files change
 /graphify ./raw --mcp              # start MCP stdio server
+/graphify ./raw --out docs/graph   # write output to custom directory instead of graphify-out
 
 /graphify add https://arxiv.org/abs/1706.03762
 /graphify add <video-url>
