@@ -144,6 +144,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
+/graphify . --out my-docs          # output to my-docs/ instead of graphify-out/
 
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
@@ -233,6 +234,7 @@ The MCP server gives your assistant structured access: `query_graph`, `get_node`
 /graphify ./raw                    # run on a specific folder
 /graphify ./raw --mode deep        # more aggressive relationship extraction
 /graphify ./raw --update           # re-extract only changed files
+/graphify ./raw --out docs         # output to docs/ instead of graphify-out/
 /graphify ./raw --directed         # preserve edge direction
 /graphify ./raw --cluster-only     # rerun clustering on existing graph
 /graphify ./raw --no-viz           # skip HTML visualization
