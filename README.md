@@ -144,6 +144,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
+/graphify . --output my-docs       # write output to my-docs/ instead of graphify-out/
 
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
