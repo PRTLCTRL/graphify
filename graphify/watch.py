@@ -36,7 +36,7 @@ def _relativize_source_files(payload: dict, root: Path) -> None:
                 continue
 
 
-def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: bool = False) -> bool:
+def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: bool = False, out_dir: str | None = None) -> bool:
     """Re-run AST extraction + build + cluster + report for code files. No LLM needed.
 
     When ``force`` is True the node-count safety check in ``to_json`` is bypassed
@@ -45,6 +45,9 @@ def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: boo
 
     Returns True on success, False on error.
     """
+    if out_dir is None:
+        out_dir = _GRAPHIFY_OUT
+    
     watch_root = watch_path.resolve()
     project_root = Path.cwd().resolve() if not watch_path.is_absolute() else watch_root
     report_root = _report_root_label(watch_path)
@@ -71,7 +74,7 @@ def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: boo
         # Filter by node ID membership in the new AST output, not by file_type —
         # INFERRED/AMBIGUOUS nodes extracted from code files also carry file_type="code"
         # and would be wrongly dropped by a file_type-based filter.
-        out = watch_path / _GRAPHIFY_OUT
+        out = watch_path / out_dir
         existing_graph = out / "graph.json"
         if existing_graph.exists():
             try:
@@ -154,7 +157,7 @@ def _rebuild_code(watch_path: Path, *, follow_symlinks: bool = False, force: boo
         return False
 
 
-def check_update(watch_path: Path) -> bool:
+def check_update(watch_path: Path, out_dir: str | None = None) -> bool:
     """Check for pending semantic update flag and notify the user if set.
 
     Cron-safe: always returns True so cron jobs do not alarm.
@@ -162,16 +165,20 @@ def check_update(watch_path: Path) -> bool:
     re-extraction via `/graphify --update` — this function only signals
     that the update is needed.
     """
-    flag = Path(watch_path) / _GRAPHIFY_OUT / "needs_update"
+    if out_dir is None:
+        out_dir = _GRAPHIFY_OUT
+    flag = Path(watch_path) / out_dir / "needs_update"
     if flag.exists():
         print(f"[graphify check-update] Pending non-code changes in {watch_path}.")
         print("[graphify check-update] Run `/graphify --update` to apply semantic re-extraction.")
     return True
 
 
-def _notify_only(watch_path: Path) -> None:
+def _notify_only(watch_path: Path, out_dir: str | None = None) -> None:
     """Write a flag file and print a notification (fallback for non-code-only corpora)."""
-    flag = watch_path / _GRAPHIFY_OUT / "needs_update"
+    if out_dir is None:
+        out_dir = _GRAPHIFY_OUT
+    flag = watch_path / out_dir / "needs_update"
     flag.parent.mkdir(parents=True, exist_ok=True)
     flag.write_text("1", encoding="utf-8")
     print(f"\n[graphify watch] New or changed files detected in {watch_path}")
@@ -184,7 +191,7 @@ def _has_non_code(changed_paths: list[Path]) -> bool:
     return any(p.suffix.lower() not in _CODE_EXTENSIONS for p in changed_paths)
 
 
-def watch(watch_path: Path, debounce: float = 3.0) -> None:
+def watch(watch_path: Path, debounce: float = 3.0, out_dir: str | None = None) -> None:
     """
     Watch watch_path for new or modified files and auto-update the graph.
 
@@ -195,6 +202,9 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
     debounce: seconds to wait after the last change before triggering (avoids
     running on every keystroke when many files are saved at once).
     """
+    if out_dir is None:
+        out_dir = _GRAPHIFY_OUT
+    
     try:
         from watchdog.observers import Observer
         from watchdog.observers.polling import PollingObserver
@@ -216,7 +226,7 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
                 return
             if any(part.startswith(".") for part in path.parts):
                 return
-            if _GRAPHIFY_OUT in path.parts:
+            if out_dir in path.parts:
                 return
             last_trigger = time.monotonic()
             pending = True
@@ -242,9 +252,9 @@ def watch(watch_path: Path, debounce: float = 3.0) -> None:
                 changed.clear()
                 print(f"\n[graphify watch] {len(batch)} file(s) changed")
                 if _has_non_code(batch):
-                    _notify_only(watch_path)
+                    _notify_only(watch_path, out_dir=out_dir)
                 else:
-                    _rebuild_code(watch_path)
+                    _rebuild_code(watch_path, out_dir=out_dir)
     except KeyboardInterrupt:
         print("\n[graphify watch] Stopped.")
     finally:
