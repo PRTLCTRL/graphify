@@ -145,6 +145,10 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
 
+# Custom output directory
+GRAPHIFY_OUT=docs/graph /graphify .                   # write output to docs/graph/ instead of graphify-out/
+GRAPHIFY_OUT=/shared/graphify /graphify .            # use absolute path
+
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
 /graphify explain "RateLimiter"
@@ -157,6 +161,32 @@ graphify merge-graphs a.json b.json              # combine two graphs
 ```
 
 See the [full command reference](#full-command-reference) below.
+
+---
+
+## Custom output directory
+
+By default, graphify writes to `graphify-out/`. To use a different directory, set the `GRAPHIFY_OUT` environment variable:
+
+```bash
+# Use a custom directory name
+export GRAPHIFY_OUT=docs/graph
+/graphify .
+
+# Or inline for a single command
+GRAPHIFY_OUT=docs/knowledge-graph /graphify .
+
+# Absolute paths work too
+GRAPHIFY_OUT=/shared/graphify /graphify .
+```
+
+This works with all commands:
+```bash
+GRAPHIFY_OUT=docs/graph graphify update .
+GRAPHIFY_OUT=docs/graph graphify query "what connects auth to db?"
+```
+
+**Team setup:** If you commit a non-default output directory to git, teammates can set `GRAPHIFY_OUT` in their shell profile or use a `.env` file so commands work consistently.
 
 ---
 
@@ -182,15 +212,23 @@ dist/
 
 `graphify-out/` is meant to be committed to git so everyone on the team starts with a map.
 
+**Custom output directories:** If your team has an existing docs structure, use `GRAPHIFY_OUT` to write there instead:
+```bash
+export GRAPHIFY_OUT=docs/knowledge-graph
+/graphify .
+```
+Teammates can set the same variable in their shell profile so all graphify commands automatically use the team's chosen directory.
+
 **Recommended `.gitignore` additions:**
 ```
 graphify-out/manifest.json    # mtime-based, breaks after git clone
 graphify-out/cost.json        # local only
 # graphify-out/cache/         # optional: commit for speed, skip to keep repo small
 ```
+If using a custom output directory, adjust the paths above accordingly (e.g., `docs/knowledge-graph/manifest.json`).
 
 **Workflow:**
-1. One person runs `/graphify .` and commits `graphify-out/`.
+1. One person runs `/graphify .` and commits the output directory.
 2. Everyone pulls — their assistant reads the graph immediately.
 3. Run `graphify hook install` to auto-rebuild after each commit (AST only, no API cost).
 4. When docs or papers change, run `/graphify --update` to refresh those nodes.
