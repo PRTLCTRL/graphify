@@ -3,11 +3,14 @@ from __future__ import annotations
 
 import contextlib
 import html
+import os
 import re
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+
+_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
 import ipaddress
 import socket
@@ -189,11 +192,11 @@ def validate_graph_path(path: str | Path, base: Path | None = None) -> Path:
     if base is None:
         resolved_hint = Path(path).resolve()
         for candidate in [resolved_hint, *resolved_hint.parents]:
-            if candidate.name == "graphify-out":
+            if candidate.name == _GRAPHIFY_OUT or candidate.name == "graphify-out":
                 base = candidate
                 break
         if base is None:
-            base = Path("graphify-out").resolve()
+            base = Path(_GRAPHIFY_OUT).resolve()
 
     base = base.resolve()
     if not base.exists():

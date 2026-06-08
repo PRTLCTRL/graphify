@@ -672,15 +672,16 @@ import { join } from "path";
 
 export const GraphifyPlugin = async ({ directory }) => {
   let reminded = false;
+  const graphifyOut = process.env.GRAPHIFY_OUT || "graphify-out";
 
   return {
     "tool.execute.before": async (input, output) => {
       if (reminded) return;
-      if (!existsSync(join(directory, "graphify-out", "graph.json"))) return;
+      if (!existsSync(join(directory, graphifyOut, "graph.json"))) return;
 
       if (input.tool === "bash") {
         output.args.command =
-          'echo "[graphify] Knowledge graph available. Read graphify-out/GRAPH_REPORT.md for god nodes and architecture context before searching files." && ' +
+          `echo "[graphify] Knowledge graph available. Read ${graphifyOut}/GRAPH_REPORT.md for god nodes and architecture context before searching files." && ` +
           output.args.command;
         reminded = true;
       }
@@ -1042,7 +1043,53 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
     return dest
 
 
+def _update_output_dir_in_modules(custom_out: str) -> None:
+    """Update _GRAPHIFY_OUT in already-imported graphify modules.
+    
+    When --out is parsed after modules are imported, we need to update
+    their module-level _GRAPHIFY_OUT variables so they use the custom path.
+    """
+    import sys as _sys
+    for module_name in list(_sys.modules.keys()):
+        if module_name.startswith("graphify.") or module_name == "graphify":
+            module = _sys.modules[module_name]
+            if hasattr(module, "_GRAPHIFY_OUT"):
+                setattr(module, "_GRAPHIFY_OUT", custom_out)
+
+
 def main() -> None:
+    # Parse --out / --output-dir early and set GRAPHIFY_OUT env var so all
+    # modules pick it up. This lets users override the default "graphify-out"
+    # directory for custom documentation workflows or worktree setups.
+    global _GRAPHIFY_OUT
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] in ("--out", "--output-dir") and i + 1 < len(args):
+            custom_out = args[i + 1]
+            os.environ["GRAPHIFY_OUT"] = custom_out
+            _GRAPHIFY_OUT = custom_out
+            # Update module-level variables in already-imported modules
+            _update_output_dir_in_modules(custom_out)
+            # Remove from argv so subcommands don't see it
+            args.pop(i)
+            args.pop(i)
+        elif args[i].startswith("--out="):
+            custom_out = args[i].split("=", 1)[1]
+            os.environ["GRAPHIFY_OUT"] = custom_out
+            _GRAPHIFY_OUT = custom_out
+            _update_output_dir_in_modules(custom_out)
+            args.pop(i)
+        elif args[i].startswith("--output-dir="):
+            custom_out = args[i].split("=", 1)[1]
+            os.environ["GRAPHIFY_OUT"] = custom_out
+            _GRAPHIFY_OUT = custom_out
+            _update_output_dir_in_modules(custom_out)
+            args.pop(i)
+        else:
+            i += 1
+    sys.argv[1:] = args
+
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1098,12 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--out DIR]")
+        print()
+        print("Global options:")
+        print("  --out DIR               custom output directory (default: graphify-out)")
+        print("  --output-dir DIR        alias for --out")
+        print("                          You can also set GRAPHIFY_OUT env var")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
@@ -1493,7 +1545,7 @@ def main() -> None:
         no_viz = "--no-viz" in sys.argv
         _min_cs_arg = next((a for a in sys.argv if a.startswith("--min-community-size=")), None)
         min_community_size = int(_min_cs_arg.split("=")[1]) if _min_cs_arg else 3
-        graph_json = watch_path / "graphify-out" / "graph.json"
+        graph_json = watch_path / _GRAPHIFY_OUT / "graph.json"
         if not graph_json.exists():
             print(f"error: no graph found at {graph_json} — run /graphify first", file=sys.stderr)
             sys.exit(1)
@@ -1520,7 +1572,7 @@ def main() -> None:
                           {"warning": "cluster-only mode — file stats not available"},
                           tokens, str(watch_path), suggested_questions=questions,
                           min_community_size=min_community_size)
-        out = watch_path / "graphify-out"
+        out = watch_path / _GRAPHIFY_OUT
         (out / "GRAPH_REPORT.md").write_text(report, encoding="utf-8")
         to_json(G, communities, str(out / "graph.json"))
 
