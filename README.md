@@ -178,6 +178,30 @@ dist/
 
 ---
 
+## Custom output directory
+
+By default, graphify writes to `graphify-out/` in the current directory. You can customize this location:
+
+```bash
+export GRAPHIFY_OUT=my-docs/knowledge-graph
+/graphify .
+```
+
+Or for a single run:
+
+```bash
+GRAPHIFY_OUT=docs/graphify /graphify .
+```
+
+Useful for:
+- **Git worktrees** — each worktree can have its own output directory
+- **Monorepos** — keep graphs organized by project (`project-a/docs/graph`, `project-b/docs/graph`)
+- **Existing documentation folders** — place the graph where your team already looks for docs
+
+The directory can be a relative path (relative to the current directory) or an absolute path.
+
+---
+
 ## Team setup
 
 `graphify-out/` is meant to be committed to git so everyone on the team starts with a map.
