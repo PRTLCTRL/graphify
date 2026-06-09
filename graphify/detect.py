@@ -16,7 +16,8 @@ class FileType(str, Enum):
     VIDEO = "video"
 
 
-_MANIFEST_PATH = "graphify-out/manifest.json"
+_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+_MANIFEST_PATH = f"{_GRAPHIFY_OUT}/manifest.json"
 
 CODE_EXTENSIONS = {'.py', '.ts', '.js', '.jsx', '.tsx', '.mjs', '.ejs', '.go', '.rs', '.java', '.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.rb', '.swift', '.kt', '.kts', '.cs', '.scala', '.php', '.lua', '.toc', '.zig', '.ps1', '.ex', '.exs', '.m', '.mm', '.jl', '.vue', '.svelte', '.dart', '.v', '.sv', '.sql', '.r'}
 DOC_EXTENSIONS = {'.md', '.mdx', '.txt', '.rst', '.html', '.yaml', '.yml'}

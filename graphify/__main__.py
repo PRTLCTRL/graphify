@@ -14,9 +14,19 @@ try:
 except Exception:
     __version__ = "unknown"
 
-# Output directory — override with GRAPHIFY_OUT env var for worktrees or shared-output setups.
+# Output directory — override with GRAPHIFY_OUT env var or --output-dir flag for worktrees or shared-output setups.
 # Accepts a relative name ("graphify-out-feature") or an absolute path ("/shared/graphify-out").
 _GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+
+
+def _get_output_dir(args: list[str]) -> str:
+    """Extract --output-dir from args if present, else use env var or default."""
+    for i, arg in enumerate(args):
+        if arg == "--output-dir" and i + 1 < len(args):
+            return args[i + 1]
+        if arg.startswith("--output-dir="):
+            return arg.split("=", 1)[1]
+    return _GRAPHIFY_OUT
 
 
 def _check_skill_version(skill_dst: Path) -> None:
@@ -1043,6 +1053,11 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Extract --output-dir early and set as env var so all code using _GRAPHIFY_OUT picks it up
+    output_dir = _get_output_dir(sys.argv)
+    if output_dir != _GRAPHIFY_OUT:
+        os.environ["GRAPHIFY_OUT"] = output_dir
+
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1057,11 +1072,14 @@ def main() -> None:
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
         print("  path \"A\" \"B\"            shortest path between two nodes in graph.json")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("    --output-dir <dir>      custom output directory (default graphify-out)")
         print("  explain \"X\"             plain-language explanation of a node and its neighbors")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("    --output-dir <dir>      custom output directory (default graphify-out)")
         print("  clone <github-url>      clone a GitHub repo locally and print its path for /graphify")
         print("  merge-graphs <g1> <g2>  merge two or more graph.json files into one cross-repo graph")
         print("    --out <path>            output path (default: graphify-out/merged-graph.json)")
+        print("    --output-dir <dir>      custom output directory (default graphify-out)")
         print("    --branch <branch>       checkout a specific branch (default: repo default)")
         print("    --out <dir>             clone to a custom directory (default: ~/.graphify/repos/<owner>/<repo>)")
         print("  add <url>               fetch a URL and save it to ./raw, then update the graph")
@@ -1069,16 +1087,20 @@ def main() -> None:
         print("    --contributor \"Name\"    tag who added it to the corpus")
         print("    --dir <path>            target directory (default: ./raw)")
         print("  watch <path>            watch a folder and rebuild the graph on code changes")
+        print("    --output-dir <dir>      custom output directory (default graphify-out)")
         print("  update <path>           re-extract code files and update the graph (no LLM needed)")
         print("    --force                 overwrite graph.json even if the rebuild has fewer nodes")
         print("                            (also: GRAPHIFY_FORCE=1 env var; use after refactors that delete code)")
+        print("    --output-dir <dir>      custom output directory (default graphify-out)")
         print("  cluster-only <path>     rerun clustering on an existing graph.json and regenerate report")
         print("    --no-viz                skip graph.html generation (useful for >5000 node graphs / CI)")
+        print("    --output-dir <dir>      custom output directory (default graphify-out)")
         print("  query \"<question>\"       BFS traversal of graph.json for a question")
         print("    --dfs                   use depth-first instead of breadth-first")
         print("    --context C             explicit edge-context filter (repeatable)")
         print("    --budget N              cap output at N tokens (default 2000)")
         print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print("    --output-dir <dir>      custom output directory (default graphify-out)")
         print("  save-result             save a Q&A result to graphify-out/memory/ for graph feedback loop")
         print("    --question Q            the question asked")
         print("    --answer A              the answer to save")
@@ -1086,6 +1108,7 @@ def main() -> None:
         print("    --nodes N1 N2 ...       source node labels cited in the answer")
         print("    --memory-dir DIR        memory directory (default: graphify-out/memory)")
         print("  check-update <path>     check needs_update flag and notify if semantic re-extraction is pending (cron-safe)")
+        print("    --output-dir <dir>      custom output directory (default graphify-out)")
         print("  tree                    emit a D3 v7 collapsible-tree HTML for graph.json")
         print("    --graph PATH            path to graph.json (default graphify-out/graph.json)")
         print("    --output HTML           output path (default graphify-out/GRAPH_TREE.html)")
@@ -1093,10 +1116,14 @@ def main() -> None:
         print("    --max-children N        cap children per node (default 200)")
         print("    --top-k-edges N         per-symbol outbound edges in inspector (default 12)")
         print("    --label NAME            project label in header")
+        print("    --output-dir <dir>      custom output directory (default graphify-out)")
         print("  benchmark [graph.json]  measure token reduction vs naive full-corpus approach")
         print("  hook install            install post-commit/post-checkout git hooks (all platforms)")
         print("  hook uninstall          remove git hooks")
         print("  hook status             check if git hooks are installed")
+        print()
+        print("Global options:")
+        print("  --output-dir <dir>      specify custom output directory (can also use GRAPHIFY_OUT env var)")
         print("  gemini install          write GEMINI.md section + BeforeTool hook (Gemini CLI)")
         print("  gemini uninstall        remove GEMINI.md section + BeforeTool hook")
         print("  cursor install          write .cursor/rules/graphify.mdc (Cursor)")

@@ -19,6 +19,7 @@ Turn any folder of files into a navigable knowledge graph with community detecti
 /graphify <path> --mode deep                          # thorough extraction, richer INFERRED edges
 /graphify <path> --update                             # incremental - re-extract only new/changed files
 /graphify <path> --directed                            # build directed graph (preserves edge direction: source→target)
+/graphify <path> --output-dir <dir>                   # custom output directory (default: graphify-out)
 /graphify <path> --whisper-model medium                # use a larger Whisper model for better transcription accuracy
 /graphify <path> --cluster-only                       # rerun clustering on existing graph
 /graphify <path> --no-viz                             # skip visualization, just report + JSON
@@ -61,6 +62,27 @@ Use it for:
 If no path was given, use `.` (current directory). Do not ask the user for a path.
 
 If the path argument starts with `https://github.com/` or `http://github.com/`, treat it as a GitHub URL — run Step 0 before anything else, then continue with the resolved local path.
+
+**Before Step 1:** Check if `--output-dir` was given. If so, set `GRAPHIFY_OUT` environment variable to that value. All subsequent Python code will pick it up automatically. Replace all hardcoded `graphify-out` references in bash commands with `${GRAPHIFY_OUT:-graphify-out}` to honor the custom directory.
+
+```bash
+# Parse --output-dir flag if present
+GRAPHIFY_OUT="graphify-out"
+for arg in "$@"; do
+  case "$arg" in
+    --output-dir=*) GRAPHIFY_OUT="${arg#*=}" ;;
+  esac
+done
+# Check for --output-dir <value> pattern
+for i in "$@"; do
+  if [ "$prev" = "--output-dir" ]; then
+    GRAPHIFY_OUT="$i"
+    break
+  fi
+  prev="$i"
+done
+export GRAPHIFY_OUT
+```
 
 Follow these steps in order. Do not skip steps.
 
