@@ -144,6 +144,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
+/graphify . --out docs/knowledge-graph  # specify custom output directory (default: graphify-out)
 
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
@@ -157,6 +158,29 @@ graphify merge-graphs a.json b.json              # combine two graphs
 ```
 
 See the [full command reference](#full-command-reference) below.
+
+---
+
+## Custom output directory
+
+By default, graphify writes to `graphify-out/` in the current directory. To specify a custom location:
+
+**Via command-line flag:**
+```bash
+/graphify . --out docs/graph          # relative path
+/graphify . --out /shared/project-kb  # absolute path
+```
+
+**Via environment variable:**
+```bash
+export GRAPHIFY_OUT="my-graph"
+/graphify .
+```
+
+Useful for:
+- Placing the graph in an existing documentation folder (`docs/`, `wiki/`)
+- Multi-branch development (different output per feature branch)
+- Shared network drives or team workspaces
 
 ---
 
