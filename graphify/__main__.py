@@ -1043,6 +1043,22 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Early flag parsing: --out must be processed before modules that use _GRAPHIFY_OUT are imported.
+    # We parse it here and update os.environ so all subsequent imports see the custom output directory.
+    global _GRAPHIFY_OUT
+    if "--out" in sys.argv:
+        try:
+            out_idx = sys.argv.index("--out")
+            if out_idx + 1 < len(sys.argv):
+                custom_out = sys.argv[out_idx + 1]
+                os.environ["GRAPHIFY_OUT"] = custom_out
+                _GRAPHIFY_OUT = custom_out
+                # Remove from argv so it doesn't interfere with subcommand parsing
+                sys.argv.pop(out_idx)
+                sys.argv.pop(out_idx)
+        except (ValueError, IndexError):
+            pass
+    
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,7 +1067,11 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--out OUTPUT_DIR]")
+        print()
+        print("Global Options:")
+        print("  --out OUTPUT_DIR        set custom output directory (default: graphify-out)")
+        print("                          can also use GRAPHIFY_OUT environment variable")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")

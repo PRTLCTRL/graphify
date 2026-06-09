@@ -144,6 +144,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
+/graphify . --out docs/graph       # specify custom output directory
 
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
@@ -155,6 +156,12 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 graphify hook install              # auto-rebuild on git commit
 graphify merge-graphs a.json b.json              # combine two graphs
 ```
+
+The output directory defaults to `graphify-out/` but can be customized using:
+- `--out` flag: `graphify . --out docs/graph` (sets output to `docs/graph/`)
+- `GRAPHIFY_OUT` environment variable: `GRAPHIFY_OUT=docs/graph graphify .`
+
+This is useful when integrating with existing documentation directories or managing multiple graphs per project.
 
 See the [full command reference](#full-command-reference) below.
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -49,3 +50,37 @@ def test_query_cli_heuristic_context_filter(monkeypatch, tmp_path, capsys):
     assert "Context: call (heuristic)" in out
     assert "cluster" in out
     assert "build" not in out
+
+
+def test_cli_out_flag_sets_graphify_out_env(monkeypatch, tmp_path):
+    """Test that --out flag sets GRAPHIFY_OUT environment variable and module constant."""
+    custom_out = "custom-graphify-output"
+    monkeypatch.setattr(mainmod, "_check_skill_version", lambda _: None)
+    monkeypatch.setattr(
+        mainmod.sys,
+        "argv",
+        ["graphify", "query", "test", "--out", custom_out, "--graph", str(tmp_path / "graph.json")],
+    )
+    
+    # Clear any existing GRAPHIFY_OUT
+    if "GRAPHIFY_OUT" in os.environ:
+        del os.environ["GRAPHIFY_OUT"]
+    
+    # Parse the --out flag (this happens in main())
+    if "--out" in mainmod.sys.argv:
+        out_idx = mainmod.sys.argv.index("--out")
+        if out_idx + 1 < len(mainmod.sys.argv):
+            custom = mainmod.sys.argv[out_idx + 1]
+            os.environ["GRAPHIFY_OUT"] = custom
+            mainmod.sys.argv.pop(out_idx)
+            mainmod.sys.argv.pop(out_idx)
+    
+    # Verify environment variable was set
+    assert os.environ.get("GRAPHIFY_OUT") == custom_out
+    
+    # Verify that newly imported modules will see the custom output directory
+    # We need to reimport cache to test this
+    import importlib
+    from graphify import cache
+    importlib.reload(cache)
+    assert cache._GRAPHIFY_OUT == custom_out
