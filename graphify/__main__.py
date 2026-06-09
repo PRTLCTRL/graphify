@@ -1050,8 +1050,43 @@ def main() -> None:
         for skill_dst in {Path.home() / cfg["skill_dst"] for cfg in _PLATFORM_CONFIG.values()}:
             _check_skill_version(skill_dst)
 
+    # Parse global --output flag before processing commands
+    global _GRAPHIFY_OUT
+    argv = list(sys.argv)
+    i = 1
+    while i < len(argv):
+        if argv[i] in ("--output", "--out"):
+            if i + 1 < len(argv):
+                output_dir = argv[i + 1]
+                _GRAPHIFY_OUT = output_dir
+                os.environ["GRAPHIFY_OUT"] = output_dir
+                # Remove the flag and its value from argv so command parsing doesn't see it
+                argv.pop(i)
+                argv.pop(i)
+                continue
+            else:
+                print("error: --output requires a directory argument", file=sys.stderr)
+                sys.exit(1)
+        elif argv[i].startswith("--output="):
+            output_dir = argv[i].split("=", 1)[1]
+            _GRAPHIFY_OUT = output_dir
+            os.environ["GRAPHIFY_OUT"] = output_dir
+            argv.pop(i)
+            continue
+        elif argv[i].startswith("--out="):
+            output_dir = argv[i].split("=", 1)[1]
+            _GRAPHIFY_OUT = output_dir
+            os.environ["GRAPHIFY_OUT"] = output_dir
+            argv.pop(i)
+            continue
+        i += 1
+    sys.argv = argv
+
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify [--output DIR] <command>")
+        print()
+        print("Global options:")
+        print("  --output DIR, --out DIR  specify output directory (default: graphify-out)")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
@@ -1493,7 +1528,7 @@ def main() -> None:
         no_viz = "--no-viz" in sys.argv
         _min_cs_arg = next((a for a in sys.argv if a.startswith("--min-community-size=")), None)
         min_community_size = int(_min_cs_arg.split("=")[1]) if _min_cs_arg else 3
-        graph_json = watch_path / "graphify-out" / "graph.json"
+        graph_json = watch_path / _GRAPHIFY_OUT / "graph.json"
         if not graph_json.exists():
             print(f"error: no graph found at {graph_json} — run /graphify first", file=sys.stderr)
             sys.exit(1)
@@ -1520,7 +1555,7 @@ def main() -> None:
                           {"warning": "cluster-only mode — file stats not available"},
                           tokens, str(watch_path), suggested_questions=questions,
                           min_community_size=min_community_size)
-        out = watch_path / "graphify-out"
+        out = watch_path / _GRAPHIFY_OUT
         (out / "GRAPH_REPORT.md").write_text(report, encoding="utf-8")
         to_json(G, communities, str(out / "graph.json"))
 

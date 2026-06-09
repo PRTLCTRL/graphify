@@ -10,7 +10,8 @@ VIDEO_EXTENSIONS = {'.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.mp3', '.w
 URL_PREFIXES = ('http://', 'https://', 'www.')
 
 _DEFAULT_MODEL = "base"
-_TRANSCRIPTS_DIR = "graphify-out/transcripts"
+_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
+_TRANSCRIPTS_DIR = f"{_GRAPHIFY_OUT}/transcripts"
 _FALLBACK_PROMPT = "Use proper punctuation and paragraph breaks."
 
 

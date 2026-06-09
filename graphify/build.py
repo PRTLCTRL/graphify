@@ -22,11 +22,15 @@
 #
 from __future__ import annotations
 import json
+import os
 import re
 import sys
 from pathlib import Path
 import networkx as nx
 from .validate import validate_extraction
+
+# Output directory — override with GRAPHIFY_OUT env var
+_GRAPHIFY_OUT = os.environ.get("GRAPHIFY_OUT", "graphify-out")
 
 
 def _normalize_id(s: str) -> str:
@@ -190,7 +194,7 @@ def deduplicate_by_label(nodes: list[dict], edges: list[dict]) -> tuple[list[dic
 
 def build_merge(
     new_chunks: list[dict],
-    graph_path: str | Path = "graphify-out/graph.json",
+    graph_path: str | Path | None = None,
     prune_sources: list[str] | None = None,
     *,
     directed: bool = False,
@@ -202,6 +206,8 @@ def build_merge(
     """
     from networkx.readwrite import json_graph as _jg
 
+    if graph_path is None:
+        graph_path = Path(_GRAPHIFY_OUT) / "graph.json"
     graph_path = Path(graph_path)
     if graph_path.exists():
         data = json.loads(graph_path.read_text(encoding="utf-8"))

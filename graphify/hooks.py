@@ -107,8 +107,11 @@ if [ "$BRANCH_SWITCH" != "1" ]; then
     exit 0
 fi
 
-# Only run if graphify-out/ exists (graph has been built before)
-if [ ! -d "graphify-out" ]; then
+# Get the configured output directory
+GRAPHIFY_OUT="${GRAPHIFY_OUT:-graphify-out}"
+
+# Only run if output directory exists (graph has been built before)
+if [ ! -d "$GRAPHIFY_OUT" ]; then
     exit 0
 fi
 

@@ -144,6 +144,7 @@ Code is extracted locally with no API calls (AST via tree-sitter). Everything el
 /graphify . --cluster-only         # rerun clustering without re-extracting
 /graphify . --no-viz               # skip the HTML, just the report + JSON
 /graphify . --wiki                 # build a markdown wiki from the graph
+/graphify . --output my-docs       # use custom output directory instead of graphify-out
 
 /graphify query "what connects auth to the database?"
 /graphify path "UserService" "DatabasePool"
@@ -157,6 +158,25 @@ graphify merge-graphs a.json b.json              # combine two graphs
 ```
 
 See the [full command reference](#full-command-reference) below.
+
+---
+
+## Custom Output Directory
+
+By default, graphify writes all output to `graphify-out/`. You can change this in two ways:
+
+1. **Command-line flag** (recommended):
+   ```bash
+   graphify . --output my-custom-dir
+   ```
+
+2. **Environment variable** (for scripts or CI):
+   ```bash
+   export GRAPHIFY_OUT=my-custom-dir
+   graphify .
+   ```
+
+The custom directory name can be relative (like `docs/graph`) or absolute (like `/shared/project-graph`).
 
 ---
 
@@ -244,6 +264,7 @@ The MCP server gives your assistant structured access: `query_graph`, `get_node`
 /graphify ./raw --neo4j-push bolt://localhost:7687
 /graphify ./raw --watch            # auto-sync as files change
 /graphify ./raw --mcp              # start MCP stdio server
+/graphify ./raw --output my-docs   # use custom output directory (default: graphify-out)
 
 /graphify add https://arxiv.org/abs/1706.03762
 /graphify add <video-url>
