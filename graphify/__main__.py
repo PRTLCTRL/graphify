@@ -1043,6 +1043,37 @@ def _clone_repo(url: str, branch: str | None = None, out_dir: Path | None = None
 
 
 def main() -> None:
+    # Parse global --out / --output-dir flag early and set GRAPHIFY_OUT env var
+    global _GRAPHIFY_OUT
+    args_copy = list(sys.argv[1:])
+    i = 0
+    while i < len(args_copy):
+        if args_copy[i] in ("--out", "--output-dir"):
+            if i + 1 < len(args_copy):
+                custom_out = args_copy[i + 1]
+                os.environ["GRAPHIFY_OUT"] = custom_out
+                _GRAPHIFY_OUT = custom_out
+                # Remove the flag and its value from sys.argv for subsequent parsing
+                flag_idx = sys.argv.index(args_copy[i])
+                sys.argv.pop(flag_idx)  # remove --out
+                sys.argv.pop(flag_idx)  # remove the value
+                break
+            i += 2
+        elif args_copy[i].startswith("--out="):
+            custom_out = args_copy[i].split("=", 1)[1]
+            os.environ["GRAPHIFY_OUT"] = custom_out
+            _GRAPHIFY_OUT = custom_out
+            sys.argv.remove(args_copy[i])
+            break
+        elif args_copy[i].startswith("--output-dir="):
+            custom_out = args_copy[i].split("=", 1)[1]
+            os.environ["GRAPHIFY_OUT"] = custom_out
+            _GRAPHIFY_OUT = custom_out
+            sys.argv.remove(args_copy[i])
+            break
+        else:
+            i += 1
+
     # Check all known skill install locations for a stale version stamp.
     # Skip during install/uninstall (hook writes trigger a fresh check anyway).
     # Deduplicate paths so platforms sharing the same install dir don't warn twice.
@@ -1051,17 +1082,20 @@ def main() -> None:
             _check_skill_version(skill_dst)
 
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: graphify <command>")
+        print("Usage: graphify <command> [--out DIR]")
+        print()
+        print("Global options:")
+        print("  --out DIR, --output-dir DIR   specify custom output directory (default: graphify-out)")
         print()
         print("Commands:")
         print("  install [--platform P]  copy skill to platform config dir (claude|windows|codex|opencode|aider|claw|droid|trae|trae-cn|gemini|cursor|antigravity|hermes|kiro|pi)")
         print("  path \"A\" \"B\"            shortest path between two nodes in graph.json")
-        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print(f"    --graph <path>          path to graph.json (default {_GRAPHIFY_OUT}/graph.json)")
         print("  explain \"X\"             plain-language explanation of a node and its neighbors")
-        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
+        print(f"    --graph <path>          path to graph.json (default {_GRAPHIFY_OUT}/graph.json)")
         print("  clone <github-url>      clone a GitHub repo locally and print its path for /graphify")
         print("  merge-graphs <g1> <g2>  merge two or more graph.json files into one cross-repo graph")
-        print("    --out <path>            output path (default: graphify-out/merged-graph.json)")
+        print(f"    --out <path>            output path (default: {_GRAPHIFY_OUT}/merged-graph.json)")
         print("    --branch <branch>       checkout a specific branch (default: repo default)")
         print("    --out <dir>             clone to a custom directory (default: ~/.graphify/repos/<owner>/<repo>)")
         print("  add <url>               fetch a URL and save it to ./raw, then update the graph")
@@ -1078,17 +1112,17 @@ def main() -> None:
         print("    --dfs                   use depth-first instead of breadth-first")
         print("    --context C             explicit edge-context filter (repeatable)")
         print("    --budget N              cap output at N tokens (default 2000)")
-        print("    --graph <path>          path to graph.json (default graphify-out/graph.json)")
-        print("  save-result             save a Q&A result to graphify-out/memory/ for graph feedback loop")
+        print(f"    --graph <path>          path to graph.json (default {_GRAPHIFY_OUT}/graph.json)")
+        print(f"  save-result             save a Q&A result to {_GRAPHIFY_OUT}/memory/ for graph feedback loop")
         print("    --question Q            the question asked")
         print("    --answer A              the answer to save")
         print("    --type T                query type: query|path_query|explain (default: query)")
         print("    --nodes N1 N2 ...       source node labels cited in the answer")
-        print("    --memory-dir DIR        memory directory (default: graphify-out/memory)")
+        print(f"    --memory-dir DIR        memory directory (default: {_GRAPHIFY_OUT}/memory)")
         print("  check-update <path>     check needs_update flag and notify if semantic re-extraction is pending (cron-safe)")
         print("  tree                    emit a D3 v7 collapsible-tree HTML for graph.json")
-        print("    --graph PATH            path to graph.json (default graphify-out/graph.json)")
-        print("    --output HTML           output path (default graphify-out/GRAPH_TREE.html)")
+        print(f"    --graph PATH            path to graph.json (default {_GRAPHIFY_OUT}/graph.json)")
+        print(f"    --output HTML           output path (default {_GRAPHIFY_OUT}/GRAPH_TREE.html)")
         print("    --root PATH             filesystem root for the hierarchy")
         print("    --max-children N        cap children per node (default 200)")
         print("    --top-k-edges N         per-symbol outbound edges in inspector (default 12)")
@@ -1278,7 +1312,7 @@ def main() -> None:
         question = sys.argv[2]
         use_dfs = "--dfs" in sys.argv
         budget = 2000
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         context_filters: list[str] = []
         args = sys.argv[3:]
         i = 0
@@ -1343,7 +1377,7 @@ def main() -> None:
         p.add_argument("--answer", required=True)
         p.add_argument("--type", dest="query_type", default="query")
         p.add_argument("--nodes", nargs="*", default=[])
-        p.add_argument("--memory-dir", default="graphify-out/memory")
+        p.add_argument("--memory-dir", default=f"{_GRAPHIFY_OUT}/memory")
         opts = p.parse_args(sys.argv[2:])
         from graphify.ingest import save_query_result as _sqr
         out = _sqr(
@@ -1363,7 +1397,7 @@ def main() -> None:
         import networkx as _nx
         source_label = sys.argv[2]
         target_label = sys.argv[3]
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         args = sys.argv[4:]
         for i, a in enumerate(args):
             if a == "--graph" and i + 1 < len(args):
@@ -1411,7 +1445,7 @@ def main() -> None:
         from graphify.serve import _find_node
         from networkx.readwrite import json_graph
         label = sys.argv[2]
-        graph_path = "graphify-out/graph.json"
+        graph_path = f"{_GRAPHIFY_OUT}/graph.json"
         args = sys.argv[3:]
         for i, a in enumerate(args):
             if a == "--graph" and i + 1 < len(args):
@@ -1493,7 +1527,7 @@ def main() -> None:
         no_viz = "--no-viz" in sys.argv
         _min_cs_arg = next((a for a in sys.argv if a.startswith("--min-community-size=")), None)
         min_community_size = int(_min_cs_arg.split("=")[1]) if _min_cs_arg else 3
-        graph_json = watch_path / "graphify-out" / "graph.json"
+        graph_json = watch_path / _GRAPHIFY_OUT / "graph.json"
         if not graph_json.exists():
             print(f"error: no graph found at {graph_json} — run /graphify first", file=sys.stderr)
             sys.exit(1)
@@ -1520,7 +1554,7 @@ def main() -> None:
                           {"warning": "cluster-only mode — file stats not available"},
                           tokens, str(watch_path), suggested_questions=questions,
                           min_community_size=min_community_size)
-        out = watch_path / "graphify-out"
+        out = watch_path / _GRAPHIFY_OUT
         (out / "GRAPH_REPORT.md").write_text(report, encoding="utf-8")
         to_json(G, communities, str(out / "graph.json"))
 
@@ -1616,8 +1650,8 @@ def main() -> None:
                 project_label = args[i_arg + 1]; i_arg += 2
             elif a in ("-h", "--help"):
                 print("Usage: graphify tree [--graph PATH] [--output HTML]")
-                print("  --graph PATH         path to graph.json (default graphify-out/graph.json)")
-                print("  --output HTML        output path (default graphify-out/GRAPH_TREE.html)")
+                print(f"  --graph PATH         path to graph.json (default {_GRAPHIFY_OUT}/graph.json)")
+                print(f"  --output HTML        output path (default {_GRAPHIFY_OUT}/GRAPH_TREE.html)")
                 print("  --root PATH          filesystem root (default: longest common dir of all source_files)")
                 print("  --max-children N     cap visible children per node (default 200)")
                 print("  --top-k-edges N      pre-compute top-K outbound edges per symbol (default 12)")
